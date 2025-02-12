@@ -11,7 +11,9 @@ CREATE TABLE developers (
   ecosystem TEXT,
   sector TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  score INTEGER,
+  blockchain_tx TEXT
 );
 
 -- 仓库表
@@ -26,7 +28,9 @@ CREATE TABLE repositories (
   topics TEXT[],
   ecosystem TEXT,
   sector TEXT,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  score INTEGER,
+  blockchain_tx TEXT
 );
 
 -- 仓库贡献者关联表

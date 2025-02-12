@@ -2,11 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import type { Developer, Repository } from '@/types/supabase';
 import { Octokit } from '@octokit/rest';
+import { ScoreCalculator } from '@/utils/score-calculator';
+import { BlockchainService } from '@/services/blockchain';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
+const blockchainService = new BlockchainService();
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -84,21 +87,71 @@ export async function POST(request: Request) {
   try {
     const { repoUrl } = await request.json();
     
-    // 这里需要实现 importGithubProject 的逻辑
-    // 1. 从 GitHub API 获取仓库信息
-    // 2. 转换数据格式
-    // 3. 存入 Supabase
-
+    // 获取仓库数据
     const repoData = await fetchGitHubRepoData(repoUrl);
     
+    // 计算项目分数
+    const projectScore = ScoreCalculator.calculateProjectScore({
+      followers: 0, // 需要从 API 获取
+      totalStars: repoData.stargazers_count,
+      forks: repoData.forks_count,
+      contributions: repoData.contributors.length,
+      recentActivity: ScoreCalculator.calculateRecentActivity(repoData.updated_at)
+    });
+
+    // 上传到区块链
+    const txHash = await blockchainService.uploadProjectData(repoData, projectScore);
+
+    // 保存到 Supabase，添加分数和交易哈希
     const { error } = await supabase
       .from('repositories')
-      .upsert(repoData);
+      .upsert({
+        ...repoData,
+        score: projectScore,
+        blockchain_tx: txHash
+      });
 
     if (error) throw error;
 
+    // 处理贡献者数据
+    for (const contributor of repoData.contributors) {
+      const developerScore = ScoreCalculator.calculateDeveloperScore({
+        followers: contributor.followers,
+        totalStars: contributor.total_stars,
+        contributions: 1,
+        recentActivity: ScoreCalculator.calculateRecentActivity(new Date().toISOString())
+      });
+
+      // 上传开发者数据到区块链
+      const devTxHash = await blockchainService.uploadDeveloperData(
+        {
+          ...contributor,
+          id: parseInt(contributor.login.replace(/\D/g, '') || '0'), // 从 login 生成一个数字 ID
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as Developer,
+        developerScore
+      );
+
+      // 保存开发者数据到 Supabase
+      await supabase
+        .from('developers')
+        .upsert({
+          ...contributor,
+          id: parseInt(contributor.login.replace(/\D/g, '') || '0'),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          score: developerScore,
+          blockchain_tx: devTxHash
+        });
+    }
+
     return NextResponse.json({ 
-      data: repoData,
+      data: {
+        ...repoData,
+        score: projectScore,
+        blockchain_tx: txHash
+      },
       success: true 
     });
   } catch (error) {
