@@ -1,7 +1,7 @@
 import { languages } from "@/i18n";
 
 export const fallbackLng = "en";
-export const defaultNS = "translation";
+export const defaultNS = "common";
 
 export { languages };
 
@@ -12,6 +12,6 @@ export function getOptions(lng = fallbackLng, ns = defaultNS) {
     lng,
     fallbackNS: defaultNS,
     defaultNS,
-    ns
+    ns: ['common', 'developer'],
   };
 } 

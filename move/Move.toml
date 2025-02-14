@@ -1,0 +1,11 @@
+[package]
+name = "github_score"
+version = "1.0.0"
+upgrade_policy = "compatible"
+
+[addresses]
+github_score_addr = "_"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework/", rev = "mainnet" }
+AptosTokenObjects = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-token-objects/", rev = "mainnet" } 

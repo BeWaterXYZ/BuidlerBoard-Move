@@ -17,6 +17,16 @@ export interface Developer {
   };
   created_at: string;
   updated_at: string;
+  badges: Array<{
+    type: number;
+    name: string;
+    issueTime: string;
+  }>;
+  endorsements: Array<{
+    from: string;
+    message: string;
+    timestamp: string;
+  }>;
 }
 
 export interface Organization {
@@ -29,6 +39,18 @@ export interface Organization {
   public_repos: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface Badge {
+  type: number;
+  name: string;
+  issue_time: number;
+}
+
+export interface ProjectEndorsement {
+  from: string;
+  message: string;
+  timestamp: number;
 }
 
 export interface Repository {
@@ -58,4 +80,6 @@ export interface Repository {
       }>;
     };
   }>;
+  badges?: Badge[];
+  endorsements?: ProjectEndorsement[];
 } 

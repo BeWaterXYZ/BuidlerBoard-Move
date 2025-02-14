@@ -7,12 +7,13 @@ import { useBuilderboardProject } from "@/services/leaderboard.query";
 import PageSwitcher from "./page-switcher";
 import { UpdateIcon, CodeIcon } from "@radix-ui/react-icons";
 import { format } from "date-fns";
+import Link from 'next/link';
 
 const gridTemplate = "grid-cols-1 md:grid-cols-[minmax(0,_0.5fr)_minmax(0,_4fr)_minmax(0,_4fr)_minmax(0,_3fr)]";
 const rowStyle = `grid gap-2 md:gap-4 border-b border-b-[#334155] box-border ${gridTemplate}`;
 
-function Project(props: { data: BuilderboardProject; rank: number }) {
-  const { data, rank } = props;
+function Project(props: { data: BuilderboardProject; rank: number; lng: string }) {
+  const { data, rank, lng } = props;
   const contributors = data.contributors?.slice(0, 5) || [];
   
   return (
@@ -24,9 +25,12 @@ function Project(props: { data: BuilderboardProject; rank: number }) {
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="md:hidden text-base">#{rank}</span>
-          <a href={`https://github.com/${data.repoName}`} className="font-bold text-sm md:text-base text-[#F8FAFC] hover:underline">
+          <Link 
+            href={`/${lng}/project/${data.name}`}
+            className="font-bold text-sm md:text-base text-[#F8FAFC] hover:underline"
+          >
             {data.name}
-          </a>
+          </Link>
         </div>
         <p className="text-xs md:text-sm text-[#94A3B8] line-clamp-2">
           {data.description}
@@ -142,6 +146,7 @@ export default function Projects({ ecosystem, sector, lng }: ProjectsProps) {
         <Project
           data={project}
           rank={index + 1 + (currentPage - 1) * ITEMS_PER_PAGE}
+          lng={lng}
           key={project.repoName}
         />
       ))}

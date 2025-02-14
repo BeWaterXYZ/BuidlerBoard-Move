@@ -1,4 +1,4 @@
-import { agentAuthed } from "./api";
+import { agentAuthed, BWagentAuthed } from "./api";
 
 export enum RankingTagType {
   ECOSYSTEM = "ECOSYSTEM",
@@ -50,7 +50,7 @@ export interface BuilderboardProject {
 }
 
 export async function getRankingTags() {
-  const { data } = await agentAuthed.get<{ data: RankingTag[] }>(`/billboard/ranking-tags`);
+  const { data } = await BWagentAuthed.get<{ data: RankingTag[] }>(`/billboard/ranking-tags`);
   return data.data;
 }
 

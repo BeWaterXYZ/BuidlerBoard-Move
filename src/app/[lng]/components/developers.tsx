@@ -6,6 +6,7 @@ import { BuilderboardDeveloper, BuilderboardLanguage } from "@/services/leaderbo
 import { useBuilderboardDeveloper } from "@/services/leaderboard.query";
 import PageSwitcher from "./page-switcher";
 import { UpdateIcon, PersonIcon } from "@radix-ui/react-icons";
+import Link from 'next/link';
 
 const gridTemplate = "grid-cols-1 md:grid-cols-[minmax(0,_0.5fr)_minmax(0,_4fr)_minmax(0,_4fr)_minmax(0,_3fr)]";
 const rowStyle = `grid gap-2 md:gap-4 border-b border-b-[#334155] box-border ${gridTemplate}`;
@@ -31,8 +32,7 @@ const languageColors: { [key: string]: string } = {
   "CSS": "#563d7c",
 };
 
-function Developer(props: { data: BuilderboardDeveloper; rank: number }) {
-  const { data, rank } = props;
+function Developer({ data, rank, lng }: { data: BuilderboardDeveloper; rank: number; lng: string }) {
   const popularRepo = data.popular_repo;
   const topLanguages = popularRepo.languages?.slice(0, 3) || [];
   
@@ -45,7 +45,10 @@ function Developer(props: { data: BuilderboardDeveloper; rank: number }) {
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="md:hidden text-base">#{rank}</span>
-          <a href={data.html_url} className="flex items-center gap-2">
+          <Link 
+            href={`/${lng}/developer/${data.login}`} 
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <Image
               src={data.avatar_url}
               alt={data.login}
@@ -56,7 +59,7 @@ function Developer(props: { data: BuilderboardDeveloper; rank: number }) {
             <p className="font-bold text-sm md:text-base text-[#F8FAFC]">
               {data.login}
             </p>
-          </a>
+          </Link>
         </div>
         <div className="flex gap-4 text-[#94A3B8] text-xs">
           <span>{data.total_stars} stars</span>
@@ -118,7 +121,7 @@ export default function Developers({ ecosystem, sector, lng }: DevelopersProps) 
   const displayLoading = apiLoading;
   const displayData = apiData;
 
-
+  console.log(displayData);
   const currentPageData = (displayData ?? []).slice(
     ITEMS_PER_PAGE * (currentPage - 1),
     ITEMS_PER_PAGE * currentPage
@@ -150,6 +153,7 @@ export default function Developers({ ecosystem, sector, lng }: DevelopersProps) 
         data && <Developer
           data={data}
           rank={index + 1 + (currentPage - 1) * ITEMS_PER_PAGE}
+          lng={lng}
           key={data.login || index}
         />
       ))}

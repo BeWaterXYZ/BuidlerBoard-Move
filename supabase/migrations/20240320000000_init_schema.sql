@@ -31,16 +31,24 @@ CREATE TABLE repositories (
   ecosystem TEXT,
   sector TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  score INTEGER,
+  score INTEGER DEFAULT 0,
   blockchain_tx TEXT,
-  badges JSONB[] DEFAULT '{}',
-  endorsements JSONB[] DEFAULT '{}'
+  badges JSONB[] DEFAULT ARRAY[]::JSONB[],
+  endorsements JSONB[] DEFAULT ARRAY[]::JSONB[]
 );
 
 -- 仓库贡献者关联表
 CREATE TABLE repository_contributors (
-  repository_id BIGINT REFERENCES repositories(id),
+  repository_id BIGINT REFERENCES repositories(id) ON DELETE CASCADE,
   login TEXT NOT NULL,
   avatar_url TEXT NOT NULL,
   PRIMARY KEY (repository_id, login)
 );
+
+-- 创建索引
+CREATE INDEX idx_developers_login ON developers(login);
+CREATE INDEX idx_developers_score ON developers(score DESC);
+CREATE INDEX idx_repositories_name ON repositories(name);
+CREATE INDEX idx_repositories_score ON repositories(score DESC);
+CREATE INDEX idx_repositories_ecosystem ON repositories(ecosystem);
+CREATE INDEX idx_repositories_sector ON repositories(sector); 

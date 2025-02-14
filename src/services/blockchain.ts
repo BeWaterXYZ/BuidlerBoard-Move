@@ -10,6 +10,26 @@ import type { Developer, Repository } from '@/types/supabase';
 const MODULE_ADDRESS = process.env.MOVEMENT_MODULE_ADDRESS!;
 const MODULE_NAME = 'github_score';
 
+// 验证地址格式
+function validateAddress(address: string): string {
+  try {
+    // 确保地址以 0x 开头
+    if (!address.startsWith('0x')) {
+      address = `0x${address}`;
+    }
+    
+    // 验证是否是有效的16进制字符串
+    if (!/^0x[0-9a-fA-F]+$/.test(address)) {
+      throw new Error('Invalid hex format');
+    }
+    
+    return address;
+  } catch (error) {
+    console.error('Invalid address format:', error);
+    throw new Error('Invalid address format');
+  }
+}
+
 export class BlockchainService {
   private client: Aptos;
   private account: Account;
@@ -21,9 +41,13 @@ export class BlockchainService {
     });
     this.client = new Aptos(config);
     
-    // 从私钥创建账户
-    const privateKey = new Ed25519PrivateKey(process.env.MOVEMENT_PRIVATE_KEY!);
-    this.account = Account.fromPrivateKey({ privateKey });
+    // 验证模块地址和私钥
+    const moduleAddress = validateAddress(process.env.NEXT_PUBLIC_MODULE_ADDRESS!);
+    const privateKeyHex = validateAddress(process.env.MOVEMENT_PRIVATE_KEY!);
+
+    this.account = Account.fromPrivateKey({
+      privateKey: new Ed25519PrivateKey(privateKeyHex)
+    });
   }
 
   // 上传开发者数据到链上
@@ -110,28 +134,38 @@ export class BlockchainService {
         resourceType: `${MODULE_ADDRESS}::${MODULE_NAME}::DeveloperScore`
       });
       
-      // 根据实际的资源结构来获取分数
-      const score = (resource as any).data.score;
-      return score;
+      return (resource as any).data.score;
     } catch (error) {
       console.error('Error fetching developer score:', error);
       throw error;
     }
   }
 
-  // 查询项目分数
-  async getProjectScore(githubId: string): Promise<number> {
+  async awardProjectBadge(projectId: string, badgeType: number) {
     try {
-      const resource = await this.client.account.getAccountResource({
-        accountAddress: MODULE_ADDRESS,
-        resourceType: `${MODULE_ADDRESS}::${MODULE_NAME}::ProjectScore`
+      const transaction = await this.client.transaction.build.simple({
+        sender: this.account.accountAddress,
+        data: {
+          function: `${MODULE_ADDRESS}::${MODULE_NAME}::award_project_badge`,
+          typeArguments: [],
+          functionArguments: [projectId, badgeType]
+        }
       });
-      
-      // 根据实际的资源结构来获取分数
-      const score = (resource as any).data.score;
-      return score;
+
+      const authenticator = await this.client.transaction.sign({
+        signer: this.account,
+        transaction
+      });
+
+      const result = await this.client.transaction.submit.simple({
+        transaction,
+        senderAuthenticator: authenticator
+      });
+
+      await this.client.waitForTransaction({ transactionHash: result.hash });
+      return result.hash;
     } catch (error) {
-      console.error('Error fetching project score:', error);
+      console.error('Error awarding project badge:', error);
       throw error;
     }
   }
