@@ -14,6 +14,8 @@ module github_score_addr::github_score {
     const E_NOT_AUTHORIZED: u64 = 1;
     const E_SCORE_NOT_FOUND: u64 = 2;
     const E_PROFILE_NOT_FOUND: u64 = 3;
+    const ERROR_PROJECT_NOT_FOUND: u64 = 4;
+    const ERROR_ALREADY_ENDORSED: u64 = 5;
 
     /// Collection 名称
     const COLLECTION_NAME: vector<u8> = b"Builder Board Badges";
@@ -116,6 +118,12 @@ module github_score_addr::github_score {
         last_update_time: u64,
     }
 
+    /// 存储所有分数数据的结构
+    struct ScoreStore has key {
+        developers: Table<String, DeveloperScore>,
+        projects: Table<String, ProjectScore>,
+    }
+
     /// 初始化模块
     fun init_module(sender: &signer) {
         move_to(sender, EventStore {
@@ -137,6 +145,11 @@ module github_score_addr::github_score {
             minting_enabled: true,
             token_counter: 0,
         });
+
+        move_to(sender, ScoreStore {
+            developers: table::new(),
+            projects: table::new(),
+        });
     }
 
     /// 提交开发者分数
@@ -148,9 +161,10 @@ module github_score_addr::github_score {
         total_stars: u64,
         followers: u64,
         timestamp_sec: u64,
-    ) acquires EventStore {
+    ) acquires EventStore, ScoreStore {
         assert!(signer::address_of(sender) == @github_score_addr, E_NOT_AUTHORIZED);
-
+        
+        let score_store = borrow_global_mut<ScoreStore>(@github_score_addr);
         let developer_score = DeveloperScore {
             github_id,
             login,
@@ -160,11 +174,10 @@ module github_score_addr::github_score {
             timestamp: timestamp_sec,
         };
 
-        if (exists<DeveloperScore>(signer::address_of(sender))) {
-            move_to(sender, developer_score);
-        } else {
-            move_to(sender, developer_score);
+        if (table::contains(&score_store.developers, github_id)) {
+            let _old_score = table::remove(&mut score_store.developers, github_id);
         };
+        table::add(&mut score_store.developers, github_id, developer_score);
 
         let event_store = borrow_global_mut<EventStore>(@github_score_addr);
         event::emit_event(&mut event_store.developer_score_events, ScoreUpdateEvent {
@@ -183,11 +196,10 @@ module github_score_addr::github_score {
         stars: u64,
         forks: u64,
         timestamp_sec: u64,
-    ) acquires EventStore {
-        // 验证调用者权限
+    ) acquires EventStore, ScoreStore {
         assert!(signer::address_of(sender) == @github_score_addr, E_NOT_AUTHORIZED);
-
-        // 创建或更新项目分数
+        
+        let score_store = borrow_global_mut<ScoreStore>(@github_score_addr);
         let project_score = ProjectScore {
             github_id,
             name,
@@ -197,14 +209,11 @@ module github_score_addr::github_score {
             timestamp: timestamp_sec,
         };
 
-        // 如果已存在则更新，否则创建新记录
-        if (exists<ProjectScore>(signer::address_of(sender))) {
-            move_to(sender, project_score);
-        } else {
-            move_to(sender, project_score);
+        if (table::contains(&score_store.projects, github_id)) {
+            let _old_score = table::remove(&mut score_store.projects, github_id);
         };
+        table::add(&mut score_store.projects, github_id, project_score);
 
-        // 发出事件
         let event_store = borrow_global_mut<EventStore>(@github_score_addr);
         event::emit_event(&mut event_store.project_score_events, ScoreUpdateEvent {
             github_id,
@@ -214,15 +223,19 @@ module github_score_addr::github_score {
     }
 
     /// 获取开发者分数
-    public fun get_developer_score(addr: address): u64 acquires DeveloperScore {
-        assert!(exists<DeveloperScore>(addr), E_SCORE_NOT_FOUND);
-        borrow_global<DeveloperScore>(addr).score
+    public fun get_developer_score(github_id: String): u64 acquires ScoreStore {
+        let score_store = borrow_global<ScoreStore>(@github_score_addr);
+        assert!(table::contains(&score_store.developers, github_id), E_SCORE_NOT_FOUND);
+        let score = table::borrow(&score_store.developers, github_id);
+        score.score
     }
 
     /// 获取项目分数
-    public fun get_project_score(addr: address): u64 acquires ProjectScore {
-        assert!(exists<ProjectScore>(addr), E_SCORE_NOT_FOUND);
-        borrow_global<ProjectScore>(addr).score
+    public fun get_project_score(github_id: String): u64 acquires ScoreStore {
+        let score_store = borrow_global<ScoreStore>(@github_score_addr);
+        assert!(table::contains(&score_store.projects, github_id), E_SCORE_NOT_FOUND);
+        let score = table::borrow(&score_store.projects, github_id);
+        score.score
     }
 
     /// 添加背书 - 任何人都可以调用

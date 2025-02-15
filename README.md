@@ -45,3 +45,4 @@ NEXT_PUBLIC_API_URL=http://services.dev.bewater.xyz
 ```bash
 pnpm dev
 ```
+movement init   --profile bardock   --network custom   --rest-url https://aptos.testnet.bardock.movementlabs.xyz/v1

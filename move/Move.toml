@@ -5,7 +5,24 @@ upgrade_policy = "compatible"
 
 [addresses]
 github_score_addr = "_"
+std = "0x1"
+aptos_framework = "0x1"
+# chain_id = "0x1" # for mainnet
+# chain_id = "0x2" # for testnet
+chain_id = "0x7e" # for movement mainnet, 126 = 7e
 
-[dependencies]
-AptosFramework = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-framework/", rev = "mainnet" }
-AptosTokenObjects = { git = "https://github.com/aptos-labs/aptos-core.git", subdir = "aptos-move/framework/aptos-token-objects/", rev = "mainnet" } 
+
+[dependencies.AptosFramework]
+git = "https://github.com/movementlabsxyz/aptos-core.git"
+rev = "movement"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.MoveStdlib]
+git = "https://github.com/movementlabsxyz/aptos-core.git"
+rev = "movement"
+subdir = "aptos-move/framework/move-stdlib"
+
+[dependencies.AptosTokenObjects]
+git = "https://github.com/movementlabsxyz/aptos-core.git"
+rev = "movement"
+subdir = "aptos-move/framework/aptos-token-objects"
