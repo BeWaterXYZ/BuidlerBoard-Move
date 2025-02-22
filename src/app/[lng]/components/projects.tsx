@@ -26,10 +26,10 @@ function Project(props: { data: BuilderboardProject; rank: number; lng: string }
         <div className="flex items-center gap-2">
           <span className="md:hidden text-base">#{rank}</span>
           <Link 
-            href={`/${lng}/project/${data.name}`}
+            href={`/${lng}/project/${data.repoName}`}
             className="font-bold text-sm md:text-base text-[#F8FAFC] hover:underline"
           >
-            {data.name}
+            {data.repoName}
           </Link>
         </div>
         <p className="text-xs md:text-sm text-[#94A3B8] line-clamp-2">

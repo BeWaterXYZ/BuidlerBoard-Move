@@ -8,13 +8,13 @@ import { InputGenerateTransactionPayloadData } from '@aptos-labs/ts-sdk';
 import { useTranslation } from '@/app/i18n/client';
 
 export default function ProjectProfile({ 
-  params: { lng, name } 
+  params: { lng, name, owner } 
 }: { 
-  params: { lng: string; name: string } 
+  params: { lng: string; name: string, owner: string } 
 }) {
   const { t } = useTranslation(lng, 'project');
   const { data: project } = useQuery<Repository>(['project', name], 
-    () => fetch(`/api/github?type=project-list&name=${name}`).then(res => res.json())
+    () => fetch(`/api/project?owner=${owner}&name=${name}`).then(res => res.json())
   );
 
   if (!project) return <div>{t('loading')}</div>;

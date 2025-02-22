@@ -55,7 +55,7 @@ export interface ProjectEndorsement {
 
 export interface Repository {
   id: number;
-  repoName: string;
+  reponame: string;
   name: string;
   description: string | null;
   languages: string[];
