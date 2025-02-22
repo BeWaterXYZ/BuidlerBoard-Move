@@ -1,74 +1,77 @@
 module github_score_addr::github_score {
     use std::signer;
     use std::string::{Self, String};
+    use std::option;
     use aptos_framework::timestamp;
     use aptos_framework::account;
     use aptos_framework::event;
-    use aptos_framework::object::{Self, Object};
+    use aptos_framework::object::{Self};
     use aptos_token_objects::collection;
     use aptos_token_objects::token;
     use std::vector;
     use aptos_std::table::{Self, Table};
 
-    /// 错误码
+    /// Error codes
     const E_NOT_AUTHORIZED: u64 = 1;
     const E_SCORE_NOT_FOUND: u64 = 2;
     const E_PROFILE_NOT_FOUND: u64 = 3;
     const ERROR_PROJECT_NOT_FOUND: u64 = 4;
     const ERROR_ALREADY_ENDORSED: u64 = 5;
 
-    /// Collection 名称
+    /// Collection name
     const COLLECTION_NAME: vector<u8> = b"Builder Board Badges";
     const COLLECTION_DESCRIPTION: vector<u8> = b"Achievement badges for outstanding developers";
     const COLLECTION_URI: vector<u8> = b"https://builder-board.com/badges";
 
-    /// 徽章类型
-    const BADGE_STAR_CONTRIBUTOR: u8 = 1;  // 明星贡献者
-    const BADGE_ACTIVE_DEVELOPER: u8 = 2;  // 活跃开发者
-    const BADGE_COMMUNITY_LEADER: u8 = 3;  // 社区领袖
-    const BADGE_CODE_MASTER: u8 = 4;       // 代码大师
+    /// Badge types
+    const BADGE_STAR_CONTRIBUTOR: u8 = 1;  // Star Contributor
+    const BADGE_ACTIVE_DEVELOPER: u8 = 2;  // Active Developer
+    const BADGE_COMMUNITY_LEADER: u8 = 3;  // Community Leader
+    const BADGE_CODE_MASTER: u8 = 4;       // Code Master
 
-    // 项目徽章
-    const BADGE_TRENDING_PROJECT: u8 = 5;  // 热门项目
-    const BADGE_INNOVATIVE_TECH: u8 = 6;   // 创新技术
-    const BADGE_COMMUNITY_CHOICE: u8 = 7;  // 社区之选
-    const BADGE_HIGH_IMPACT: u8 = 8;       // 高影响力
+    // Project badges
+    const BADGE_TRENDING_PROJECT: u8 = 5;  // Trending Project
+    const BADGE_INNOVATIVE_TECH: u8 = 6;   // Innovative Technology
+    const BADGE_COMMUNITY_CHOICE: u8 = 7;  // Community Choice
+    const BADGE_HIGH_IMPACT: u8 = 8;       // High Impact
 
-    /// 开发者分数记录
-    struct DeveloperScore has key {
+    /// Score data for a developer
+    struct DeveloperScore has key, store, drop {
         github_id: String,
         login: String,
         score: u64,
         total_stars: u64,
         followers: u64,
         timestamp: u64,
+        endorsements: vector<Endorsement>,
     }
 
-    /// 项目分数记录
-    struct ProjectScore has key {
+    /// Score data for a project
+    struct ProjectScore has key, store, drop {
         github_id: String,
         name: String,
         score: u64,
         stars: u64,
         forks: u64,
         timestamp: u64,
+        endorsements: vector<ProjectEndorsement>,
     }
 
-    /// 徽章结构
-    struct Badge has store, drop {
+    /// Badge structure
+    struct Badge has store, drop, copy {
         badge_type: u8,
         name: String,
         issue_time: u64,
     }
 
-    /// 背书记录
-    struct Endorsement has store, drop {
+    /// Endorsement record
+    struct Endorsement has store, drop, copy {
         from: address,
         message: String,
         timestamp: u64,
     }
 
-    /// 开发者个人资料
+    /// Developer personal information
     struct DeveloperProfile has key {
         github_id: String,
         login: String,
@@ -76,19 +79,19 @@ module github_score_addr::github_score {
         total_stars: u64,
         followers: u64,
         timestamp: u64,
-        badges: vector<Badge>,         // 成就徽章
-        endorsements: vector<Endorsement>, // 修改为存储完整的背书记录
-        reputation: u64,               // 声誉分数
+        badges: vector<Badge>,         // Achievement badges
+        endorsements: vector<Endorsement>, // Changed to store complete endorsement record
+        reputation: u64,               // Reputation score
     }
 
-    /// 分数更新事件
+    /// Score update event
     struct ScoreUpdateEvent has drop, store {
         github_id: String,
         score: u64,
         timestamp: u64,
     }
 
-    /// 事件句柄存储
+    /// Event handler storage
     struct EventStore has key {
         developer_score_events: event::EventHandle<ScoreUpdateEvent>,
         project_score_events: event::EventHandle<ScoreUpdateEvent>,
@@ -100,14 +103,14 @@ module github_score_addr::github_score {
         token_counter: u64,
     }
 
-    // 新增项目背书结构
-    struct ProjectEndorsement has store, drop {
+    // New project endorsement structure
+    struct ProjectEndorsement has store, drop, copy {
         from: address,
         message: String,
         timestamp: u64,
     }
 
-    // 新增项目结构
+    // New project structure
     struct Project has key {
         id: String,
         name: String,
@@ -118,20 +121,20 @@ module github_score_addr::github_score {
         last_update_time: u64,
     }
 
-    /// 存储所有分数数据的结构
+    /// Storage for all score data
     struct ScoreStore has key {
         developers: Table<String, DeveloperScore>,
         projects: Table<String, ProjectScore>,
     }
 
-    /// 初始化模块
+    /// Initialize module
     fun init_module(sender: &signer) {
         move_to(sender, EventStore {
             developer_score_events: account::new_event_handle<ScoreUpdateEvent>(sender),
             project_score_events: account::new_event_handle<ScoreUpdateEvent>(sender),
         });
 
-        // 创建徽章集合
+        // Create badge collection
         collection::create_unlimited_collection(
             sender,
             string::utf8(COLLECTION_DESCRIPTION),
@@ -152,7 +155,7 @@ module github_score_addr::github_score {
         });
     }
 
-    /// 提交开发者分数
+    /// Submit developer score
     public entry fun submit_developer_score(
         sender: &signer,
         github_id: String,
@@ -172,6 +175,7 @@ module github_score_addr::github_score {
             total_stars,
             followers,
             timestamp: timestamp_sec,
+            endorsements: vector::empty(),
         };
 
         if (table::contains(&score_store.developers, github_id)) {
@@ -187,7 +191,7 @@ module github_score_addr::github_score {
         });
     }
 
-    /// 提交项目分数
+    /// Submit project score
     public entry fun submit_project_score(
         sender: &signer,
         github_id: String,
@@ -207,6 +211,7 @@ module github_score_addr::github_score {
             stars,
             forks,
             timestamp: timestamp_sec,
+            endorsements: vector::empty(),
         };
 
         if (table::contains(&score_store.projects, github_id)) {
@@ -222,7 +227,7 @@ module github_score_addr::github_score {
         });
     }
 
-    /// 获取开发者分数
+    /// Get developer score
     public fun get_developer_score(github_id: String): u64 acquires ScoreStore {
         let score_store = borrow_global<ScoreStore>(@github_score_addr);
         assert!(table::contains(&score_store.developers, github_id), E_SCORE_NOT_FOUND);
@@ -230,7 +235,7 @@ module github_score_addr::github_score {
         score.score
     }
 
-    /// 获取项目分数
+    /// Get project score
     public fun get_project_score(github_id: String): u64 acquires ScoreStore {
         let score_store = borrow_global<ScoreStore>(@github_score_addr);
         assert!(table::contains(&score_store.projects, github_id), E_SCORE_NOT_FOUND);
@@ -238,7 +243,7 @@ module github_score_addr::github_score {
         score.score
     }
 
-    /// 添加背书 - 任何人都可以调用
+    /// Endorse - Anyone can call
     public entry fun endorse_developer(
         from: &signer,
         to: address,
@@ -246,7 +251,7 @@ module github_score_addr::github_score {
     ) acquires DeveloperProfile {
         let from_addr = signer::address_of(from);
         assert!(exists<DeveloperProfile>(to), E_PROFILE_NOT_FOUND);
-        assert!(from_addr != to, 0); // 不能给自己背书
+        assert!(from_addr != to, 0); // Cannot endorse yourself
         
         let profile = borrow_global_mut<DeveloperProfile>(to);
         let endorsement = Endorsement {
@@ -259,14 +264,14 @@ module github_score_addr::github_score {
         profile.reputation = profile.reputation + 1;
     }
 
-    /// 获取开发者背书列表
+    // Get developer endorsement list
     #[view]
     public fun get_developer_endorsements(addr: address): vector<Endorsement> acquires DeveloperProfile {
         let profile = borrow_global<DeveloperProfile>(addr);
         profile.endorsements
     }
 
-    /// 发放成就徽章 NFT
+    // Award achievement badge NFT
     public entry fun award_badge(
         admin: &signer,
         to: address,
@@ -282,7 +287,7 @@ module github_score_addr::github_score {
         let description = get_badge_description(badge_type);
         let uri = get_badge_uri(badge_type);
 
-        // 铸造徽章 NFT
+        // Mint badge NFT
         let constructor_ref = token::create_named_token(
             admin,
             badge_collection.collection_name,
@@ -292,14 +297,14 @@ module github_score_addr::github_score {
             uri,
         );
 
-        // 转移给接收者
-        let token_signer = object::generate_signer(&constructor_ref);
-        token::direct_transfer(admin, &token_signer, to, object::object_from_constructor_ref(&constructor_ref));
+        // Transfer to receiver - using object-based transfer
+        let token_obj = object::object_from_constructor_ref<token::Token>(&constructor_ref);
+        object::transfer(admin, token_obj, to);
 
         badge_collection.token_counter = counter;
     }
 
-    /// 获取徽章名称
+    /// Get badge name
     fun get_badge_name(badge_type: u8): String {
         if (badge_type == BADGE_STAR_CONTRIBUTOR) {
             string::utf8(b"Star Contributor")
@@ -322,7 +327,7 @@ module github_score_addr::github_score {
         }
     }
 
-    /// 获取徽章描述
+    /// Get badge description
     fun get_badge_description(badge_type: u8): String {
         if (badge_type == BADGE_STAR_CONTRIBUTOR) {
             string::utf8(b"Awarded to developers with exceptional contributions")
@@ -345,7 +350,7 @@ module github_score_addr::github_score {
         }
     }
 
-    /// 获取徽章URI
+    /// Get badge URI
     fun get_badge_uri(badge_type: u8): String {
         let base_uri = string::utf8(b"https://builder-board.com/api/badges/");
         string::append(&mut base_uri, num_to_string(badge_type));
@@ -360,19 +365,20 @@ module github_score_addr::github_score {
         let n = num;
         while (n > 0) {
             let digit = ((48 + n % 10) as u8);
-            string::insert(&mut res, 0, digit);
+            let digit_str = string::utf8(vector[digit]);
+            string::append(&mut res, digit_str);
             n = n / 10;
         };
         res
     }
 
     #[test_only]
-    /// 测试初始化函数
+    /// Test initialize function
     public fun initialize_for_test(sender: &signer) {
         init_module(sender);
     }
 
-    // 项目背书函数
+    // Project endorsement function
     public entry fun endorse_project(
         endorser: &signer,
         project_id: String,
@@ -380,12 +386,11 @@ module github_score_addr::github_score {
     ) acquires Project {
         let endorser_addr = std::signer::address_of(endorser);
         
-        // 确保项目存在
-        assert!(exists<Project>(@admin), ERROR_PROJECT_NOT_FOUND);
-        let project = borrow_global_mut<Project>(@admin);
+        assert!(exists<Project>(@github_score_addr), ERROR_PROJECT_NOT_FOUND);
+        let project = borrow_global_mut<Project>(@github_score_addr);
         assert!(project.id == project_id, ERROR_PROJECT_NOT_FOUND);
         
-        // 检查是否已经背书过
+        // Check if already endorsed
         let i = 0;
         let len = vector::length(&project.endorsements);
         while (i < len) {
@@ -394,7 +399,7 @@ module github_score_addr::github_score {
             i = i + 1;
         };
         
-        // 添加新背书
+        // Add new endorsement
         let endorsement = ProjectEndorsement {
             from: endorser_addr,
             message,
@@ -403,10 +408,10 @@ module github_score_addr::github_score {
         vector::push_back(&mut project.endorsements, endorsement);
     }
 
-    // 获取项目背书列表
+    // Get project endorsement list
     #[view]
     public fun get_project_endorsements(project_id: String): vector<ProjectEndorsement> acquires Project {
-        let project = borrow_global<Project>(@admin);
+        let project = borrow_global<Project>(@github_score_addr);
         assert!(project.id == project_id, ERROR_PROJECT_NOT_FOUND);
         project.endorsements
     }

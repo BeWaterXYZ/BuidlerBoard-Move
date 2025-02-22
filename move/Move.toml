@@ -11,18 +11,23 @@ aptos_framework = "0x1"
 # chain_id = "0x2" # for testnet
 chain_id = "0x7e" # for movement mainnet, 126 = 7e
 
+[dependencies]
+AptosFramework = { local = "../../aptos-core/aptos-move/framework/aptos-framework" }
+AptosToken = { local = "../../aptos-core/aptos-move/framework/aptos-token" }
+MoveStdlib = { local = "../../aptos-core/aptos-move/framework/move-stdlib" }
+AptosTokenObjects = { local = "../../aptos-core/aptos-move/framework/aptos-token-objects" }
 
-[dependencies.AptosFramework]
-git = "https://github.com/movementlabsxyz/aptos-core.git"
-rev = "movement"
-subdir = "aptos-move/framework/aptos-framework"
+# [dependencies.AptosFramework]
+# git = "https://github.com/movementlabsxyz/aptos-core.git"
+# rev = "movement"
+# subdir = "aptos-move/framework/aptos-framework"
 
-[dependencies.MoveStdlib]
-git = "https://github.com/movementlabsxyz/aptos-core.git"
-rev = "movement"
-subdir = "aptos-move/framework/move-stdlib"
+# [dependencies.MoveStdlib]
+# git = "https://github.com/movementlabsxyz/aptos-core.git"
+# rev = "movement"
+# subdir = "aptos-move/framework/move-stdlib"
 
-[dependencies.AptosTokenObjects]
-git = "https://github.com/movementlabsxyz/aptos-core.git"
-rev = "movement"
-subdir = "aptos-move/framework/aptos-token-objects"
+# [dependencies.AptosTokenObjects]
+# git = "https://github.com/movementlabsxyz/aptos-core.git"
+# rev = "movement"
+# subdir = "aptos-move/framework/aptos-token-objects"
