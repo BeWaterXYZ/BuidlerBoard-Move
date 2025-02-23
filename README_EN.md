@@ -55,14 +55,13 @@ Project rating uses a multi-dimensional evaluation approach:
 ### Achievement Badge System
 
 - 8 different types of badges
-- Issued as NFTs
-- Automatically awarded based on contributions
+- NFTs [manually issued](./move/sources/github_score.move)
+- Based on developer contribution assessment
 
 ### Community Endorsement
 
-- Developer mutual endorsement
+- [Developer mutual endorsement](./move/sources/github_score.move)
 - Project community recognition
-- Reputation score accumulation
 
 ## Technical Architecture
 
@@ -105,6 +104,9 @@ Project rating uses a multi-dimensional evaluation approach:
 ## Future Plans
 
 - More ecosystem integrations
+  - MoveDID integration
+  - Automatic NFT badge issuance
+  - More on-chain identity verification
 - DAO governance mechanism
 - Enhanced incentive models
 - Cross-chain interoperability 

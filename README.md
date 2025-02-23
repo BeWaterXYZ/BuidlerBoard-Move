@@ -55,14 +55,13 @@ BuilderBoard 是一个基于 Movement 区块链的开发者贡献追踪和激励
 ### 成就徽章系统
 
 - 8种不同类型的徽章
-- NFT形式发放
-- 基于贡献度自动授予
+- NFT形式[手动发放](./move/sources/github_score.move)
+- 基于开发者贡献度评定
 
 ### 社区背书机制
 
-- 开发者互相背书
+- [开发者互相背书](./move/sources/github_score.move)
 - 项目社区认可
-- 信誉积分累积
 
 ## 技术架构
 
@@ -105,6 +104,9 @@ BuilderBoard 是一个基于 Movement 区块链的开发者贡献追踪和激励
 ## 未来规划
 
 - 更多生态集成
+  - MoveDID 集成
+  - NFT 徽章自动发放
+  - 更多链上身份认证
 - DAO治理机制
 - 更丰富的激励模式
 - 跨链互操作
