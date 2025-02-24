@@ -328,46 +328,60 @@ export async function POST(request: Request) {
               );
               console.log('batch developer scores transaction hash', txHash);
               const shouldUpdateDevelopers = developersForBlockchain.map(dev => ({
-                ...dev,
+                id: dev.id,
                 blockchain_tx: txHash
               }));
               console.log('shouldUpdateDevelopers', shouldUpdateDevelopers);
-              // 批量更新交易哈希
-              await supabaseAdmin
+              
+              // 添加错误处理和结果验证
+              const { error: updateTxError } = await supabaseAdmin
                 .from('developers')
                 .upsert(shouldUpdateDevelopers);
-            }
 
-            // 保存到repository_contributors表
-            const contributorsData = contributors.map(c => ({
-              repository_id: repoData.id,
-              login: c.login,
-              avatar_url: c.avatar_url,
-            }));
-
-            const { error: contribError } = await supabaseAdmin
-              .from('repository_contributors')
-              .upsert(contributorsData);
-
-            if (contribError) {
-              console.error('Error saving contributors:', contribError);
-              throw contribError;
-            }
-            
-            return NextResponse.json({
-              code: 0,
-              msg: 'success',
-              data: {
-                ...data,
-                score: projectScore,
-                blockchain_tx: projectTxHash,
-                contributors: validContributors.map(c => ({
-                  ...c,
-                  score: c.score,
-                  blockchain_tx: c.blockchain_tx
-                }))
+              if (updateTxError) {
+                console.error('Error updating transaction hash:', updateTxError);
+                throw updateTxError;
               }
-            });
+
+              // 验证更新是否成功
+              const { data: verifyUpdate } = await supabaseAdmin
+                .from('developers')
+                .select('id, blockchain_tx')
+                .in('id', developersForBlockchain.map(d => d.id));
+              
+              console.log('Verification after update:', verifyUpdate);
+
+              // 保存到repository_contributors表
+              const contributorsData = contributors.map(c => ({
+                repository_id: repoData.id,
+                login: c.login,
+                avatar_url: c.avatar_url,
+              }));
+
+              const { error: contribError } = await supabaseAdmin
+                .from('repository_contributors')
+                .upsert(contributorsData);
+
+              if (contribError) {
+                console.error('Error saving contributors:', contribError);
+                throw contribError;
+              }
+              
+              return NextResponse.json({
+                code: 0,
+                msg: 'success',
+                data: {
+                  ...data,
+                  score: projectScore,
+                  blockchain_tx: projectTxHash,
+                  contributors: validContributors.map(c => ({
+                    ...c,
+                    score: c.score,
+                    blockchain_tx: c.blockchain_tx
+                  }))
+                }
+              });
+            }
           }
         } catch (error) {
           if (error instanceof Error && error.message === 'RATE_LIMIT_EXCEEDED') {
