@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useImportGithubProject } from "@/services/leaderboard.query";
+import { useQueryClient } from "@tanstack/react-query";
 
 const schema = z.object({
   repoUrl: z.string()
@@ -28,6 +29,7 @@ export default function BuilderboardImportDialog({
   const addToast = useToastStore((s) => s.add);
   const importMutation = useImportGithubProject();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
 
   const {
     register,
@@ -41,12 +43,15 @@ export default function BuilderboardImportDialog({
     setIsSubmitting(true);
     showLoading();
     try {
-      // addToast({
-      //   type: "info",
-      //   title: "Processing",
-      //   description: "Please wait while we process your request. This may take a few minutes due to blockchain operations.",
-      // });
       await importMutation.mutateAsync(formData.repoUrl);
+      await Promise.all([
+        queryClient.invalidateQueries({ 
+          queryKey: ['BuilderboardDeveloper'] 
+        }),
+        queryClient.invalidateQueries({ 
+          queryKey: ['BuilderboardProject'] 
+        })
+      ]);
       addToast({
         type: "success",
         title: "Success",
