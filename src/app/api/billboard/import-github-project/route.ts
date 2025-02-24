@@ -327,10 +327,16 @@ export async function POST(request: Request) {
                 developersForBlockchain.map(d => d.score)
               );
               console.log('batch developer scores transaction hash', txHash);
+              
               const shouldUpdateDevelopers = developersForBlockchain.map(dev => ({
                 id: dev.id,
-                blockchain_tx: txHash
+                login: dev.login,           
+                html_url: dev.html_url,     
+                avatar_url: dev.avatar_url, 
+                blockchain_tx: txHash,      
+                score: dev.score           
               }));
+              
               console.log('shouldUpdateDevelopers', shouldUpdateDevelopers);
               
               // 添加错误处理和结果验证
@@ -343,13 +349,13 @@ export async function POST(request: Request) {
                 throw updateTxError;
               }
 
-              // 验证更新是否成功
-              const { data: verifyUpdate } = await supabaseAdmin
-                .from('developers')
-                .select('id, blockchain_tx')
-                .in('id', developersForBlockchain.map(d => d.id));
+              // // 验证更新是否成功
+              // const { data: verifyUpdate } = await supabaseAdmin
+              //   .from('developers')
+              //   .select('id, login, blockchain_tx')
+              //   .in('id', developersForBlockchain.map(d => d.id));
               
-              console.log('Verification after update:', verifyUpdate);
+              // console.log('Verification after update:', verifyUpdate);
 
               // 保存到repository_contributors表
               const contributorsData = contributors.map(c => ({
