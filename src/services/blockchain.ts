@@ -43,6 +43,7 @@ export class BlockchainService {
     
     // 验证模块地址和私钥
     const moduleAddress = validateAddress(process.env.NEXT_PUBLIC_MODULE_ADDRESS!);
+    console.log('moduleAddress', moduleAddress);
     const privateKeyHex = validateAddress(process.env.MOVEMENT_PRIVATE_KEY!);
 
     this.account = Account.fromPrivateKey({
@@ -78,7 +79,7 @@ export class BlockchainService {
         transaction,
         senderAuthenticator: authenticator
       });
-
+      console.log('developer score transaction result', result);
       await this.client.waitForTransaction({ transactionHash: result.hash });
 
       return result.hash;
@@ -116,6 +117,7 @@ export class BlockchainService {
         transaction,
         senderAuthenticator: authenticator
       });
+      console.log('project score transaction result', result);
 
       await this.client.waitForTransaction({ transactionHash: result.hash });
 

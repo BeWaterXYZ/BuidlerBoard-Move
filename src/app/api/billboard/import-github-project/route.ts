@@ -116,27 +116,169 @@ export async function POST(request: Request) {
 
       // 保存贡献者信息
       if (contributors.length > 0) {
-        const contributorsData = contributors.map(c => ({
-          repository_id: repoData.id,
-          login: c.login,
-          avatar_url: c.avatar_url,
-        }));
+        const top5Contributors = contributors.slice(0, 5);
+        
+        try {
+          const contributorDetails = await Promise.all(
+            top5Contributors.map(async (c) => {
+              if (!c.login) return null;
+              
+              try {
+                const { data: user } = await octokit.users.getByUsername({
+                  username: c.login
+                }).catch((error) => {
+                  if (error.status === 403 && error.message.includes('API rate limit exceeded')) {
+                    throw new Error('RATE_LIMIT_EXCEEDED');
+                  }
+                  return { data: null };
+                });
 
-        const { error: contribError } = await supabaseAdmin
-          .from('repository_contributors')
-          .upsert(contributorsData);
+                if (!user) return null;
 
-        if (contribError) {
-          console.error('Error saving contributors:', contribError);
-          throw contribError;
+                // 获取用户所有的仓库并计算总 stars
+                let totalStars = 0;
+                try {
+                  let page = 1;
+                  while (true) {
+                    const { data: userRepos } = await octokit.repos.listForUser({
+                      username: user.login,
+                      per_page: 100,
+                      page
+                    });
+                    
+                    if (userRepos.length === 0) break;
+                    
+                    totalStars += userRepos.reduce((sum, repo) => sum + (repo.stargazers_count || 0), 0);
+                    if (userRepos.length < 100) break;
+                    page++;
+                  }
+                } catch (error: any) {
+                  if (error.status === 403 && error.message.includes('API rate limit exceeded')) {
+                    throw new Error('RATE_LIMIT_EXCEEDED');
+                  }
+                  console.error(`Error fetching stars for user ${user.login}:`, error);
+                }
+
+                // 获取用户最受欢迎的仓库
+                const { data: repos = [] } = await octokit.repos.listForUser({
+                  username: user.login,
+                  sort: "updated",
+                  direction: 'desc',
+                  per_page: 1
+                }).catch((error) => {
+                  if (error.status === 403 && error.message.includes('API rate limit exceeded')) {
+                    throw new Error('RATE_LIMIT_EXCEEDED');
+                  }
+                  return { data: [] };
+                });
+
+                let popularRepo = null;
+                if (repos.length > 0) {
+                  const repo = repos[0];
+                  if (repo.name) {
+                    // 获取仓库的语言统计
+                    const { data: languages = {} } = await octokit.repos.listLanguages({
+                      owner: user.login,
+                      repo: repo.name
+                    }).catch((error) => {
+                      if (error.status === 403 && error.message.includes('API rate limit exceeded')) {
+                        throw new Error('RATE_LIMIT_EXCEEDED');
+                      }
+                      return { data: {} };
+                    });
+
+                    const totalBytes: number = Object.values(languages as Record<string, number>)
+                      .reduce((a, b) => a + b, 0);
+                    
+                    const languagesWithPercentage = Object.entries(languages as Record<string, number>)
+                      .map(([name, bytes]) => ({
+                        name,
+                        percentage: Math.round((bytes / totalBytes) * 100)
+                      }));
+
+                    popularRepo = {
+                      html_url: repo.html_url,
+                      name: repo.name,
+                      description: repo.description,
+                      languages: languagesWithPercentage
+                    };
+                  }
+                }
+
+                return {
+                  id: user.id,
+                  login: user.login,
+                  html_url: user.html_url,
+                  avatar_url: user.avatar_url,
+                  bio: user.bio,
+                  followers: user.followers,
+                  total_stars: totalStars,
+                  popular_repo: popularRepo,
+                  created_at: user.created_at,
+                  updated_at: new Date().toISOString(),
+                  score: 0,
+                  blockchain_tx: null,
+                  badges: [],
+                  endorsements: []
+                };
+              } catch (error) {
+                if (error instanceof Error && error.message === 'RATE_LIMIT_EXCEEDED') {
+                  throw error;
+                }
+                console.error(`Error processing contributor ${c.login}:`, error);
+                return null;
+              }
+            })
+          );
+
+          // 过滤掉null值并保存到developers表
+          const validContributors = contributorDetails.filter((c): c is NonNullable<typeof c> => c !== null);
+          if (validContributors.length > 0) {
+            const { error: devError } = await supabaseAdmin
+              .from('developers')
+              .upsert(validContributors);
+
+            if (devError) {
+              console.error('Error saving developers:', devError);
+              throw devError;
+            }
+          }
+
+          // 保存到repository_contributors表
+          const contributorsData = contributors.map(c => ({
+            repository_id: repoData.id,
+            login: c.login,
+            avatar_url: c.avatar_url,
+          }));
+
+          const { error: contribError } = await supabaseAdmin
+            .from('repository_contributors')
+            .upsert(contributorsData);
+
+          if (contribError) {
+            console.error('Error saving contributors:', contribError);
+            throw contribError;
+          }
+
+          return NextResponse.json({
+            code: 0,
+            msg: 'success',
+            data
+          });
+        } catch (error) {
+          if (error instanceof Error && error.message === 'RATE_LIMIT_EXCEEDED') {
+            return NextResponse.json(
+              {
+                code: 429,
+                msg: 'GitHub API rate limit exceeded. Please try again later.',
+                error: 'Rate limit exceeded'
+              },
+              { status: 429 }
+            );
+          }
+          throw error;
         }
       }
-
-      return NextResponse.json({
-        code: 0,
-        msg: 'success',
-        data
-      });
     } catch (error) {
       console.error('Error parsing repository URL:', error);
       return NextResponse.json(

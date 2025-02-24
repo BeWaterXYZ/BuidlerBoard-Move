@@ -29,7 +29,7 @@ export default function DeveloperProfile({
 }) {
   const { t } = useTranslation(lng, 'developer');
   const { data: developer } = useQuery<Developer>(['developer', login], 
-    () => fetch(`/api/github?type=developer-list&login=${login}`).then(res => res.json())
+    () => fetch(`/api/developer?login=${login}`).then(res => res.json())
   );
 
   if (!developer) return <div>{t('loading')}</div>;
