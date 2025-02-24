@@ -11,19 +11,19 @@ module github_score_addr::github_score {
     use std::vector;
     use aptos_std::table::{Self, Table};
 
-    /// Error codes
+    // Error codes
     const E_NOT_AUTHORIZED: u64 = 1;
     const E_SCORE_NOT_FOUND: u64 = 2;
     const E_PROFILE_NOT_FOUND: u64 = 3;
     const ERROR_PROJECT_NOT_FOUND: u64 = 4;
     const ERROR_ALREADY_ENDORSED: u64 = 5;
 
-    /// Collection name
+    // Collection name
     const COLLECTION_NAME: vector<u8> = b"Builder Board Badges";
     const COLLECTION_DESCRIPTION: vector<u8> = b"Achievement badges for outstanding developers";
     const COLLECTION_URI: vector<u8> = b"https://builder-board.com/badges";
 
-    /// Badge types
+    // Badge types
     const BADGE_STAR_CONTRIBUTOR: u8 = 1;  // Star Contributor
     const BADGE_ACTIVE_DEVELOPER: u8 = 2;  // Active Developer
     const BADGE_COMMUNITY_LEADER: u8 = 3;  // Community Leader
@@ -35,7 +35,7 @@ module github_score_addr::github_score {
     const BADGE_COMMUNITY_CHOICE: u8 = 7;  // Community Choice
     const BADGE_HIGH_IMPACT: u8 = 8;       // High Impact
 
-    /// Score data for a developer
+    // Score data for a developer
     struct DeveloperScore has key, store, drop {
         github_id: String,
         login: String,
@@ -46,7 +46,7 @@ module github_score_addr::github_score {
         endorsements: vector<Endorsement>,
     }
 
-    /// Score data for a project
+    // Score data for a project
     struct ProjectScore has key, store, drop {
         github_id: String,
         name: String,
@@ -57,21 +57,21 @@ module github_score_addr::github_score {
         endorsements: vector<ProjectEndorsement>,
     }
 
-    /// Badge structure
+    // Badge structure
     struct Badge has store, drop, copy {
         badge_type: u8,
         name: String,
         issue_time: u64,
     }
 
-    /// Endorsement record
+    // Endorsement record
     struct Endorsement has store, drop, copy {
         from: address,
         message: String,
         timestamp: u64,
     }
 
-    /// Developer personal information
+    // Developer personal information
     struct DeveloperProfile has key {
         github_id: String,
         login: String,
@@ -84,14 +84,14 @@ module github_score_addr::github_score {
         reputation: u64,               // Reputation score
     }
 
-    /// Score update event
+    // Score update event
     struct ScoreUpdateEvent has drop, store {
         github_id: String,
         score: u64,
         timestamp: u64,
     }
 
-    /// Event handler storage
+    // Event handler storage
     struct EventStore has key {
         developer_score_events: event::EventHandle<ScoreUpdateEvent>,
         project_score_events: event::EventHandle<ScoreUpdateEvent>,
@@ -121,19 +121,19 @@ module github_score_addr::github_score {
         last_update_time: u64,
     }
 
-    /// Storage for all score data
+    // Storage for all score data
     struct ScoreStore has key {
         developers: Table<String, DeveloperScore>,
         projects: Table<String, ProjectScore>,
     }
 
-    /// Score calculator hash for verification
+    // Score calculator hash for verification
     struct ScoreCalculatorHash has key {
         hash: String,
         timestamp: u64,
     }
 
-    /// Initialize module
+    // Initialize module
     fun init_module(sender: &signer) {
         move_to(sender, EventStore {
             developer_score_events: account::new_event_handle<ScoreUpdateEvent>(sender),
@@ -166,7 +166,7 @@ module github_score_addr::github_score {
         });
     }
 
-    /// Submit developer score
+    // Submit developer score
     public entry fun submit_developer_score(
         sender: &signer,
         github_id: String,
@@ -202,7 +202,7 @@ module github_score_addr::github_score {
         });
     }
 
-    /// Submit project score
+    // Submit project score
     public entry fun submit_project_score(
         sender: &signer,
         github_id: String,
@@ -238,7 +238,7 @@ module github_score_addr::github_score {
         });
     }
 
-    /// Get developer score
+    // Get developer score
     #[view]
     public fun get_developer_score(github_id: String): u64 acquires ScoreStore {
         let score_store = borrow_global<ScoreStore>(@github_score_addr);
@@ -247,7 +247,7 @@ module github_score_addr::github_score {
         score.score
     }
 
-    /// Get project score
+    // Get project score
     #[view]
     public fun get_project_score(github_id: String): u64 acquires ScoreStore {
         let score_store = borrow_global<ScoreStore>(@github_score_addr);
@@ -256,7 +256,7 @@ module github_score_addr::github_score {
         score.score
     }
 
-    /// Endorse - Anyone can call
+    // Endorse - Anyone can call
     public entry fun endorse_developer(
         from: &signer,
         github_id: String,
@@ -322,7 +322,7 @@ module github_score_addr::github_score {
         badge_collection.token_counter = counter;
     }
 
-    /// Get badge name
+    // Get badge name
     fun get_badge_name(badge_type: u8): String {
         if (badge_type == BADGE_STAR_CONTRIBUTOR) {
             string::utf8(b"Star Contributor")
@@ -345,7 +345,7 @@ module github_score_addr::github_score {
         }
     }
 
-    /// Get badge description
+    // Get badge description
     fun get_badge_description(badge_type: u8): String {
         if (badge_type == BADGE_STAR_CONTRIBUTOR) {
             string::utf8(b"Awarded to developers with exceptional contributions")
@@ -368,7 +368,7 @@ module github_score_addr::github_score {
         }
     }
 
-    /// Get badge URI
+    // Get badge URI
     fun get_badge_uri(badge_type: u8): String {
         let base_uri = string::utf8(b"https://builder-board.com/api/badges/");
         string::append(&mut base_uri, num_to_string(badge_type));
@@ -391,7 +391,7 @@ module github_score_addr::github_score {
     }
 
     #[test_only]
-    /// Test initialize function
+    // Test initialize function
     public fun initialize_for_test(sender: &signer) {
         init_module(sender);
     }
@@ -436,7 +436,7 @@ module github_score_addr::github_score {
         project_score.endorsements
     }
 
-    /// Submit multiple developer scores in one transaction
+    // Submit multiple developer scores in one transaction
     public entry fun submit_developers_scores(
         sender: &signer,
         github_ids: vector<String>,
@@ -490,7 +490,7 @@ module github_score_addr::github_score {
         };
     }
 
-    /// Submit multiple project scores in one transaction
+    // Submit multiple project scores in one transaction
     public entry fun submit_projects_scores(
         sender: &signer,
         github_ids: vector<String>,
@@ -544,7 +544,7 @@ module github_score_addr::github_score {
         };
     }
 
-    /// Update score calculator hash
+    // Update score calculator hash
     public entry fun update_calculator_hash(
         sender: &signer,
         new_hash: String,
@@ -556,7 +556,7 @@ module github_score_addr::github_score {
         calculator_hash.timestamp = timestamp::now_seconds();
     }
 
-    /// Get current score calculator hash
+    // Get current score calculator hash
     #[view]
     public fun get_calculator_hash(): (String, u64) acquires ScoreCalculatorHash {
         let calculator_hash = borrow_global<ScoreCalculatorHash>(@github_score_addr);

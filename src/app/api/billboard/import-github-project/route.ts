@@ -332,7 +332,7 @@ export async function POST(request: Request) {
                 .from('developers')
                 .upsert(
                   developersForBlockchain.map(dev => ({
-                    id: dev.id,
+                    ...dev,
                     blockchain_tx: txHash
                   }))
                 );
