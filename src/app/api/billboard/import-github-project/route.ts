@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { Octokit } from '@octokit/rest';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { BlockchainService } from '@/services/blockchain';
+import { ScoreCalculator } from '@/utils/score-calculator';
+import { Developer } from '@/types/supabase';
 
 
 const octokit = new Octokit({
@@ -232,8 +235,9 @@ export async function POST(request: Request) {
           );
 
           // 过滤掉null值并保存到developers表
-          const validContributors = contributorDetails.filter((c): c is NonNullable<typeof c> => c !== null);
+          const validContributors: Developer[] = contributorDetails.filter((c): c is NonNullable<typeof c> => c !== null);
           if (validContributors.length > 0) {
+            // 先将开发者数据存入数据库
             const { error: devError } = await supabaseAdmin
               .from('developers')
               .upsert(validContributors);
@@ -242,29 +246,89 @@ export async function POST(request: Request) {
               console.error('Error saving developers:', devError);
               throw devError;
             }
+
+            const blockchainService = new BlockchainService();
+            
+
+            // 计算并更新项目分数
+            const projectScore = ScoreCalculator.calculateProjectScore({
+              followers: repoData.subscribers_count || 0,
+              totalStars: repoData.stargazers_count,
+              forks: repoData.forks_count,
+              contributions: contributors.length,
+              recentActivity: ScoreCalculator.calculateRecentActivity(repoData.updated_at)
+            });
+
+            // 上传项目数据到区块链
+            const projectTxHash = await blockchainService.uploadProjectData(data, projectScore);
+
+            // 更新数据库中的项目分数和交易哈希
+            await supabaseAdmin
+              .from('repositories')
+              .update({ 
+                score: projectScore,
+                tx: projectTxHash 
+              })
+              .eq('id', data.id);
+
+            // 为每个有效的贡献者计算分数并上链
+            for (const contributor of validContributors) {
+              const developerScore = ScoreCalculator.calculateDeveloperScore({
+                followers: contributor.followers,
+                totalStars: contributor.total_stars,
+                contributions: 1, // 至少有1次贡献
+                recentActivity: ScoreCalculator.calculateRecentActivity(contributor.updated_at)
+              });
+              contributor.score = developerScore;
+              contributor.blockchain_tx = null;
+
+              // 上传开发者数据到区块链
+              const developerTxHash = await blockchainService.uploadDeveloperData(
+                contributor,
+                developerScore
+              );
+
+              // 更新数据库中的开发者分数和交易哈希
+              await supabaseAdmin
+                .from('developers')
+                .update({ 
+                  score: developerScore,
+                  blockchain_tx: developerTxHash 
+                })
+                .eq('id', contributor.id);
+            }
+
+            // 保存到repository_contributors表
+            const contributorsData = contributors.map(c => ({
+              repository_id: repoData.id,
+              login: c.login,
+              avatar_url: c.avatar_url,
+            }));
+
+            const { error: contribError } = await supabaseAdmin
+              .from('repository_contributors')
+              .upsert(contributorsData);
+
+            if (contribError) {
+              console.error('Error saving contributors:', contribError);
+              throw contribError;
+            }
+            
+            return NextResponse.json({
+              code: 0,
+              msg: 'success',
+              data: {
+                ...data,
+                score: projectScore,
+                tx: projectTxHash,
+                contributors: validContributors.map(c => ({
+                  ...c,
+                  score: c.score,
+                  blockchain_tx: c.blockchain_tx
+                }))
+              }
+            });
           }
-
-          // 保存到repository_contributors表
-          const contributorsData = contributors.map(c => ({
-            repository_id: repoData.id,
-            login: c.login,
-            avatar_url: c.avatar_url,
-          }));
-
-          const { error: contribError } = await supabaseAdmin
-            .from('repository_contributors')
-            .upsert(contributorsData);
-
-          if (contribError) {
-            console.error('Error saving contributors:', contribError);
-            throw contribError;
-          }
-
-          return NextResponse.json({
-            code: 0,
-            msg: 'success',
-            data
-          });
         } catch (error) {
           if (error instanceof Error && error.message === 'RATE_LIMIT_EXCEEDED') {
             return NextResponse.json(

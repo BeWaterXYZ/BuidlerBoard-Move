@@ -28,7 +28,9 @@ export async function GET(request: Request) {
         followers,
         popular_repo,
         created_at,
-        updated_at
+        updated_at,
+        blockchain_tx,
+        score
       `)
       .eq('login', login)
       .single();
@@ -54,7 +56,7 @@ export async function GET(request: Request) {
     const formattedDeveloper: Developer = {
       ...developer,
       badges: [], // 暂时返回空数组，后续从合约中获取
-      endorsements: [] // 暂时返回空数组，后续从合约中获取
+      endorsements: [], // 暂时返回空数组，后续从合约中获取
     };
 
     return NextResponse.json(formattedDeveloper);

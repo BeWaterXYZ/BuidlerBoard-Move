@@ -14,7 +14,7 @@ export interface Developer {
       name: string;
       percentage: number;
     }>;
-  };
+  } | null;
   created_at: string;
   updated_at: string;
   badges: Array<{
@@ -27,6 +27,8 @@ export interface Developer {
     message: string;
     timestamp: string;
   }>;
+  blockchain_tx: string | null;
+  score: number;
 }
 
 export interface Organization {
@@ -82,4 +84,6 @@ export interface Repository {
   }>;
   badges?: Badge[];
   endorsements?: ProjectEndorsement[];
+  blockchain_tx: string | null;
+  score: number;
 } 

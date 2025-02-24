@@ -7,7 +7,7 @@ import {
 } from '@aptos-labs/ts-sdk';
 import type { Developer, Repository } from '@/types/supabase';
 
-const MODULE_ADDRESS = process.env.MOVEMENT_MODULE_ADDRESS!;
+const MODULE_ADDRESS = process.env.NEXT_PUBLIC_MODULE_ADDRESS!;
 const MODULE_NAME = 'github_score';
 
 // 验证地址格式

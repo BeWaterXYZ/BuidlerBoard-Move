@@ -32,7 +32,9 @@ export async function GET(request: Request) {
         contributors:repository_contributors(
           login,
           avatar_url
-        )
+        ),
+        blockchain_tx,
+        score
       `)
       .eq('reponame', `${owner}/${name}`)
       .single();
@@ -71,7 +73,7 @@ export async function GET(request: Request) {
         }
       })) || [],
       badges: [], // 暂时返回空数组，后续从合约中获取
-      endorsements: [] // 暂时返回空数组，后续从合约中获取
+      endorsements: [], // 暂时返回空数组，后续从合约中获取
     };
 
     return NextResponse.json(formattedProject);
