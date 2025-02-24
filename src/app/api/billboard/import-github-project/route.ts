@@ -326,7 +326,7 @@ export async function POST(request: Request) {
                 developersForBlockchain,
                 developersForBlockchain.map(d => d.score)
               );
-
+              console.log('batch developer scores transaction hash', txHash);
               // 批量更新交易哈希
               await supabaseAdmin
                 .from('developers')

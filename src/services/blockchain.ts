@@ -210,7 +210,7 @@ export class BlockchainService {
       console.log('batch developer scores transaction result', result);
       const txHash = result.hash;
       await this.client.waitForTransaction({ transactionHash: result.hash });
-
+      console.log('batch developer scores transaction hash', txHash);
       return txHash;
     } catch (error) {
       console.error('Error uploading batch developer data to blockchain:', error);
