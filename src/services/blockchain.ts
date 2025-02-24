@@ -80,7 +80,7 @@ export class BlockchainService {
         senderAuthenticator: authenticator
       });
       console.log('developer score transaction result', result);
-      // await this.client.waitForTransaction({ transactionHash: result.hash });
+      await this.client.waitForTransaction({ transactionHash: result.hash });
 
       return result.hash;
     } catch (error) {
@@ -119,7 +119,7 @@ export class BlockchainService {
       });
       console.log('project score transaction result', result);
 
-      // await this.client.waitForTransaction({ transactionHash: result.hash });
+      await this.client.waitForTransaction({ transactionHash: result.hash });
 
       return result.hash;
     } catch (error) {
@@ -164,7 +164,7 @@ export class BlockchainService {
         senderAuthenticator: authenticator
       });
 
-      // await this.client.waitForTransaction({ transactionHash: result.hash });
+      await this.client.waitForTransaction({ transactionHash: result.hash });
       return result.hash;
     } catch (error) {
       console.error('Error awarding project badge:', error);
@@ -209,7 +209,7 @@ export class BlockchainService {
       });
       console.log('batch developer scores transaction result', result);
       const txHash = result.hash;
-      // await this.client.waitForTransaction({ transactionHash: result.hash });
+      await this.client.waitForTransaction({ transactionHash: result.hash });
       // console.log('batch developer scores transaction hash', txHash);
       return txHash;
     } catch (error) {
@@ -254,7 +254,7 @@ export class BlockchainService {
         senderAuthenticator: authenticator
       });
       console.log('batch project scores transaction result', result);
-      // await this.client.waitForTransaction({ transactionHash: result.hash });
+      await this.client.waitForTransaction({ transactionHash: result.hash });
 
       return result.hash;
     } catch (error) {

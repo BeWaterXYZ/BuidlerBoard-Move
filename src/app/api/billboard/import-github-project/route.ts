@@ -327,15 +327,15 @@ export async function POST(request: Request) {
                 developersForBlockchain.map(d => d.score)
               );
               console.log('batch developer scores transaction hash', txHash);
+              const shouldUpdateDevelopers = developersForBlockchain.map(dev => ({
+                ...dev,
+                blockchain_tx: txHash
+              }));
+              console.log('shouldUpdateDevelopers', shouldUpdateDevelopers);
               // 批量更新交易哈希
               await supabaseAdmin
                 .from('developers')
-                .upsert(
-                  developersForBlockchain.map(dev => ({
-                    ...dev,
-                    blockchain_tx: txHash
-                  }))
-                );
+                .upsert(shouldUpdateDevelopers);
             }
 
             // 保存到repository_contributors表
