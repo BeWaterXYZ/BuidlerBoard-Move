@@ -2,6 +2,9 @@
   "loading": "Loading...",
   "total_stars": "{{count}} stars",
   "followers": "{{count}} followers",
+  "score": "Score: {{score}}",
+  "tx_hash": "Tx Hash",
+  "copy_hash": "Copy transaction hash",
   "badges": {
     "title": "Achievement Badges",
     "types": {

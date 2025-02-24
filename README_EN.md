@@ -85,6 +85,10 @@ Project rating uses a multi-dimensional evaluation approach:
   - Developer contributions recorded via smart contracts
   - Community trust mechanism
   - Achievement proof
+- Algorithm Transparency Verification
+  - Scoring algorithm hash stored on-chain
+  - Real-time hash verification API
+  - Ensures algorithm fairness and consistency
 - Multi-dimensional Evaluation
   - Code contributions
   - Community impact

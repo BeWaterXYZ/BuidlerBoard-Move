@@ -2,6 +2,9 @@
   "loading": "加载中...",
   "total_stars": "{{count}} 星标",
   "followers": "{{count}} 关注者",
+  "score": "得分: {{score}}",
+  "tx_hash": "交易哈希",
+  "copy_hash": "复制交易哈希",
   "badges": {
     "title": "成就徽章",
     "types": {

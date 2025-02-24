@@ -7,6 +7,16 @@ import { ConnectButton, useWallet } from '@razorlabs/razorkit';
 import { InputGenerateTransactionPayloadData } from '@aptos-labs/ts-sdk';
 import { useTranslation } from '@/app/i18n/client';
 
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    console.error('Failed to copy text: ', err);
+    return false;
+  }
+}
+
 export default function ProjectProfile({ 
   params: { lng, name, owner } 
 }: { 
@@ -23,12 +33,22 @@ export default function ProjectProfile({
     <div className="container mx-auto p-4">
       <ProjectInfo project={project} t={t} />
       <ContributorSection contributors={project.contributors} t={t} />
-      <EndorsementSection name={name} endorsements={project.endorsements || []} t={t} lng={lng} />
+      {/* <EndorsementSection name={name} endorsements={project.endorsements || []} t={t} lng={lng} /> */}
     </div>
   );
 }
 
 function ProjectInfo({ project, t }: { project: Repository; t: any }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (text: string) => {
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="flex flex-col space-y-4">
       <div className="flex items-center gap-4">
@@ -49,10 +69,42 @@ function ProjectInfo({ project, t }: { project: Repository; t: any }) {
       <div className="flex space-x-4">
         <span>⭐ {t('stars', { count: project.stargazers_count })}</span>
         <span>🔄 {t('forks', { count: project.forks_count })}</span>
+        <span>🏆 {t('score', { score: project.score })}</span>
       </div>
+      {project.blockchain_tx && (
+        <div className="flex items-center space-x-2 text-sm bg-gray-900/30 p-3 rounded-lg">
+          <span className="text-gray-400">{t('tx_hash')}:</span>
+          <div className="flex items-center space-x-2 flex-1">
+            <a 
+              href={`https://explorer.movementlabs.xyz/txn/${project.blockchain_tx}?network=bardock+testnet`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:text-blue-300 hover:underline font-mono"
+            >
+              {shortenAddress(project.blockchain_tx)}
+            </a>
+            <button
+              onClick={() => handleCopy(project.blockchain_tx!)}
+              className="p-1.5 hover:bg-gray-800 rounded-md transition-colors"
+              title={t('copy_hash')}
+            >
+              {copied ? (
+                <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                    d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
         {project.languages.map(lang => (
-          <span key={lang} className="px-2 py-1 bg-gray-100 rounded">
+          <span key={lang} className="px-2 py-1 bg-black rounded">
             {lang}
           </span>
         ))}
@@ -75,9 +127,6 @@ function ContributorSection({ contributors, t }: { contributors: any[]; t: any }
             />
             <div>
               <div className="font-medium">{contributor.login}</div>
-              <div className="text-sm text-gray-500">
-                {contributor.contributions} commits
-              </div>
             </div>
           </div>
         ))}

@@ -27,6 +27,7 @@ export default function BuilderboardImportDialog({
   const { showLoading, dismissLoading } = useLoadingStoreAction();
   const addToast = useToastStore((s) => s.add);
   const importMutation = useImportGithubProject();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     register,
@@ -37,8 +38,14 @@ export default function BuilderboardImportDialog({
   });
 
   const onSubmit = async (formData: Inputs) => {
+    setIsSubmitting(true);
     showLoading();
     try {
+      // addToast({
+      //   type: "info",
+      //   title: "Processing",
+      //   description: "Please wait while we process your request. This may take a few minutes due to blockchain operations.",
+      // });
       await importMutation.mutateAsync(formData.repoUrl);
       addToast({
         type: "success",
@@ -54,6 +61,7 @@ export default function BuilderboardImportDialog({
       });
     } finally {
       dismissLoading();
+      setIsSubmitting(false);
     }
   };
 
@@ -74,6 +82,7 @@ export default function BuilderboardImportDialog({
           inputClassName="h-12"
           placeholder="example: https://github.com/owner/repo"
           error={errors["repoUrl"]}
+          disabled={isSubmitting}
           {...register("repoUrl")}
         />
 
@@ -81,11 +90,18 @@ export default function BuilderboardImportDialog({
           <button 
             type="submit" 
             className="btn btn-primary w-60"
+            disabled={isSubmitting}
           >
-            Submit
+            {isSubmitting ? "Processing..." : "Submit"}
           </button>
         </div>
       </form>
+
+      {isSubmitting && (
+        <p className="text-center text-white/70 mt-4">
+          Please wait while we process your request. This operation involves blockchain transactions and may take a few minutes.
+        </p>
+      )}
     </div>
   );
 } 

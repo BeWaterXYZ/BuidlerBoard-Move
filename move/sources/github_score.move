@@ -127,6 +127,12 @@ module github_score_addr::github_score {
         projects: Table<String, ProjectScore>,
     }
 
+    /// Score calculator hash for verification
+    struct ScoreCalculatorHash has key {
+        hash: String,
+        timestamp: u64,
+    }
+
     /// Initialize module
     fun init_module(sender: &signer) {
         move_to(sender, EventStore {
@@ -152,6 +158,11 @@ module github_score_addr::github_score {
         move_to(sender, ScoreStore {
             developers: table::new(),
             projects: table::new(),
+        });
+
+        move_to(sender, ScoreCalculatorHash {
+            hash: string::utf8(b"c69906fa56f807a8833812393173c5ad1b853aedbce0e32994f8431f3af18a6f"),
+            timestamp: timestamp::now_seconds(),
         });
     }
 
@@ -531,5 +542,24 @@ module github_score_addr::github_score {
             
             i = i + 1;
         };
+    }
+
+    /// Update score calculator hash
+    public entry fun update_calculator_hash(
+        sender: &signer,
+        new_hash: String,
+    ) acquires ScoreCalculatorHash {
+        assert!(signer::address_of(sender) == @github_score_addr, E_NOT_AUTHORIZED);
+        
+        let calculator_hash = borrow_global_mut<ScoreCalculatorHash>(@github_score_addr);
+        calculator_hash.hash = new_hash;
+        calculator_hash.timestamp = timestamp::now_seconds();
+    }
+
+    /// Get current score calculator hash
+    #[view]
+    public fun get_calculator_hash(): (String, u64) acquires ScoreCalculatorHash {
+        let calculator_hash = borrow_global<ScoreCalculatorHash>(@github_score_addr);
+        (calculator_hash.hash, calculator_hash.timestamp)
     }
 } 

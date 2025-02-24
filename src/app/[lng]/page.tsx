@@ -62,7 +62,7 @@ export default function BuilderBoard({
           </div>
 
           <div className="w-full max-w-4xl">
-            <TagSelector onChange={setSelectedTags} />
+            {/* <TagSelector onChange={setSelectedTags} /> */}
             <div className="mt-[10px]">
               {currentTab === "developers" && (
                 <Developers

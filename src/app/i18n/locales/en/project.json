@@ -2,6 +2,7 @@
   "loading": "Loading...",
   "stars": "{{count}} stars",
   "forks": "{{count}} forks",
+  "score": "Score: {{score}}",
   "contributors": {
     "title": "Top Contributors"
   },
@@ -14,5 +15,7 @@
     "from": "From",
     "wallet_required": "Please connect wallet first",
     "transaction_failed": "Failed to submit endorsement"
-  }
+  },
+  "tx_hash": "Tx Hash",
+  "copy_hash": "Copy transaction hash"
 } 

@@ -2,6 +2,9 @@
   "loading": "加载中...",
   "stars": "{{count}} 星标",
   "forks": "{{count}} 复刻",
+  "score": "得分: {{score}}",
+  "tx_hash": "交易哈希",
+  "copy_hash": "复制交易哈希",
   "contributors": {
     "title": "主要贡献者"
   },
@@ -15,4 +18,5 @@
     "wallet_required": "请先连接钱包",
     "transaction_failed": "提交背书失败"
   }
+  
 } 

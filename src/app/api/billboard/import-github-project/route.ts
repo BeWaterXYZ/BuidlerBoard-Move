@@ -278,16 +278,18 @@ export async function POST(request: Request) {
               })
               .eq('id', data.id);
 
-            // 为每个有效的贡献者计算分数并上链
-            for (const contributor of validContributors) {
-              // 查询现有开发者数据
-              const { data: existingDev } = await supabaseAdmin
-                .from('developers')
-                .select('score, blockchain_tx, badges, endorsements')
-                .eq('id', contributor.id)
-                .single();
+            // 批量查询现有开发者数据
+            const { data: existingDevs } = await supabaseAdmin
+              .from('developers')
+              .select('id, score, blockchain_tx, badges, endorsements')
+              .in('id', validContributors.map(c => c.id));
 
-              // 计算新分数
+            const existingDevsMap = new Map(existingDevs?.map(d => [d.id, d]) || []);
+
+            // 计算所有开发者的新分数
+            const developersToUpdate = validContributors.map(contributor => {
+              const existingDev = existingDevsMap.get(contributor.id);
+              
               const developerScore = ScoreCalculator.calculateDeveloperScore({
                 followers: contributor.followers,
                 totalStars: contributor.total_stars,
@@ -295,39 +297,45 @@ export async function POST(request: Request) {
                 recentActivity: ScoreCalculator.calculateRecentActivity(contributor.updated_at)
               });
 
-              // 保留现有的badges和endorsements
-              contributor.score = existingDev?.score || developerScore;
-              contributor.blockchain_tx = existingDev?.blockchain_tx || null;
-              contributor.badges = existingDev?.badges || [];
-              contributor.endorsements = existingDev?.endorsements || [];
+              return {
+                ...contributor,
+                score: developerScore,
+                blockchain_tx: existingDev?.blockchain_tx || null,
+                badges: existingDev?.badges || [],
+                endorsements: existingDev?.endorsements || [],
+                needsBlockchainUpdate: !existingDev || existingDev.score !== developerScore
+              };
+            });
 
-              // 使用upsert更新开发者数据
-              const { error: devError } = await supabaseAdmin
+            // 批量更新数据库
+            const { error: updateError } = await supabaseAdmin
+              .from('developers')
+              .upsert(developersToUpdate.map(({ needsBlockchainUpdate, ...dev }) => dev));
+
+            if (updateError) {
+              console.error('Error updating developers:', updateError);
+              throw updateError;
+            }
+
+            // 找出需要更新区块链的开发者
+            const developersForBlockchain = developersToUpdate.filter(d => d.needsBlockchainUpdate);
+
+            if (developersForBlockchain.length > 0) {
+              // 批量上传到区块链
+              const txHash = await blockchainService.uploadDevelopersBatch(
+                developersForBlockchain,
+                developersForBlockchain.map(d => d.score)
+              );
+
+              // 批量更新交易哈希
+              await supabaseAdmin
                 .from('developers')
-                .upsert({
-                  ...contributor,
-                  score: developerScore, // 更新为新计算的分数
-                  // 其他字段保持不变
-                });
-
-              if (devError) {
-                console.error('Error updating developer:', devError);
-                throw devError;
-              }
-
-              // 只有当分数变化时才触发上链
-              if (!existingDev || existingDev.score !== developerScore) {
-                const developerTxHash = await blockchainService.uploadDeveloperData(
-                  contributor,
-                  developerScore
+                .upsert(
+                  developersForBlockchain.map(dev => ({
+                    id: dev.id,
+                    blockchain_tx: txHash
+                  }))
                 );
-
-                // 更新交易哈希
-                await supabaseAdmin
-                  .from('developers')
-                  .update({ blockchain_tx: developerTxHash })
-                  .eq('id', contributor.id);
-              }
             }
 
             // 保存到repository_contributors表

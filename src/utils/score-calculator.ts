@@ -1,3 +1,5 @@
+import { createHash } from 'crypto';
+
 export interface ScoreFactors {
   followers: number;
   totalStars: number;
@@ -69,5 +71,32 @@ export class ScoreCalculator {
 
     // 30天内递减
     return Math.max(0, 1 - daysDiff / 30);
+  }
+
+  // 获取评分算法的哈希值
+  static getCalculatorHash(): string {
+    // 将关键评分逻辑转换为字符串
+    const algorithmString = `
+      Developer Score Weights:
+      followers: ${15}
+      totalStars: ${25}
+      contributions: ${20}
+      pullRequests: ${15}
+      issuesResolved: ${10}
+      codeQuality: ${10}
+      recentActivity: ${5}
+
+      Project Score Weights:
+      followers: ${15}
+      totalStars: ${35}
+      forks: ${20}
+      contributions: ${20}
+      recentActivity: ${10}
+    `.trim();
+
+    // 使用 SHA-256 计算哈希
+    return createHash('sha256')
+      .update(algorithmString)
+      .digest('hex');
   }
 }
