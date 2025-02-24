@@ -171,4 +171,94 @@ export class BlockchainService {
       throw error;
     }
   }
+
+  // 批量上传开发者数据到链上
+  async uploadDevelopersBatch(developers: Developer[], scores: number[]) {
+    try {
+      // Prepare batch data
+      const github_ids = developers.map(dev => dev.id.toString());
+      const logins = developers.map(dev => dev.login);
+      const total_stars = developers.map(dev => dev.total_stars);
+      const followers = developers.map(dev => dev.followers);
+      const timestamp = Math.floor(Date.now() / 1000);
+
+      const transaction = await this.client.transaction.build.simple({
+        sender: this.account.accountAddress,
+        data: {
+          function: `${MODULE_ADDRESS}::${MODULE_NAME}::submit_developers_scores`,
+          typeArguments: [],
+          functionArguments: [
+            github_ids,
+            logins, 
+            scores,
+            total_stars,
+            followers,
+            timestamp
+          ]
+        }
+      });
+
+      const authenticator = await this.client.transaction.sign({
+        signer: this.account,
+        transaction
+      });
+
+      const result = await this.client.transaction.submit.simple({
+        transaction,
+        senderAuthenticator: authenticator
+      });
+      console.log('batch developer scores transaction result', result);
+      await this.client.waitForTransaction({ transactionHash: result.hash });
+
+      return result.hash;
+    } catch (error) {
+      console.error('Error uploading batch developer data to blockchain:', error);
+      throw error;
+    }
+  }
+
+  // 批量上传项目数据到链上
+  async uploadProjectsBatch(repositories: Repository[], scores: number[]) {
+    try {
+      // Prepare batch data
+      const github_ids = repositories.map(repo => repo.id.toString());
+      const names = repositories.map(repo => repo.name);
+      const stars = repositories.map(repo => repo.stargazers_count);
+      const forks = repositories.map(repo => repo.forks_count);
+      const timestamp = Math.floor(Date.now() / 1000);
+
+      const transaction = await this.client.transaction.build.simple({
+        sender: this.account.accountAddress,
+        data: {
+          function: `${MODULE_ADDRESS}::${MODULE_NAME}::submit_projects_scores`,
+          typeArguments: [],
+          functionArguments: [
+            github_ids,
+            names,
+            scores,
+            stars,
+            forks,
+            timestamp
+          ]
+        }
+      });
+
+      const authenticator = await this.client.transaction.sign({
+        signer: this.account,
+        transaction
+      });
+
+      const result = await this.client.transaction.submit.simple({
+        transaction,
+        senderAuthenticator: authenticator
+      });
+      console.log('batch project scores transaction result', result);
+      await this.client.waitForTransaction({ transactionHash: result.hash });
+
+      return result.hash;
+    } catch (error) {
+      console.error('Error uploading batch project data to blockchain:', error);
+      throw error;
+    }
+  }
 } 

@@ -228,6 +228,7 @@ module github_score_addr::github_score {
     }
 
     /// Get developer score
+    #[view]
     public fun get_developer_score(github_id: String): u64 acquires ScoreStore {
         let score_store = borrow_global<ScoreStore>(@github_score_addr);
         assert!(table::contains(&score_store.developers, github_id), E_SCORE_NOT_FOUND);
@@ -236,6 +237,7 @@ module github_score_addr::github_score {
     }
 
     /// Get project score
+    #[view]
     public fun get_project_score(github_id: String): u64 acquires ScoreStore {
         let score_store = borrow_global<ScoreStore>(@github_score_addr);
         assert!(table::contains(&score_store.projects, github_id), E_SCORE_NOT_FOUND);
@@ -246,29 +248,34 @@ module github_score_addr::github_score {
     /// Endorse - Anyone can call
     public entry fun endorse_developer(
         from: &signer,
-        to: address,
+        github_id: String,
         message: String
-    ) acquires DeveloperProfile {
+    ) acquires ScoreStore {
         let from_addr = signer::address_of(from);
-        assert!(exists<DeveloperProfile>(to), E_PROFILE_NOT_FOUND);
-        assert!(from_addr != to, 0); // Cannot endorse yourself
+        let score_store = borrow_global_mut<ScoreStore>(@github_score_addr);
         
-        let profile = borrow_global_mut<DeveloperProfile>(to);
+        // Check if developer exists
+        assert!(table::contains(&score_store.developers, github_id), E_SCORE_NOT_FOUND);
+        
+        let developer_score = table::borrow_mut(&mut score_store.developers, github_id);
+        
+        // Add new endorsement
         let endorsement = Endorsement {
             from: from_addr,
             message,
             timestamp: timestamp::now_seconds(),
         };
         
-        vector::push_back(&mut profile.endorsements, endorsement);
-        profile.reputation = profile.reputation + 1;
+        vector::push_back(&mut developer_score.endorsements, endorsement);
     }
 
     // Get developer endorsement list
     #[view]
-    public fun get_developer_endorsements(addr: address): vector<Endorsement> acquires DeveloperProfile {
-        let profile = borrow_global<DeveloperProfile>(addr);
-        profile.endorsements
+    public fun get_developer_endorsements(github_id: String): vector<Endorsement> acquires ScoreStore {
+        let score_store = borrow_global<ScoreStore>(@github_score_addr);
+        assert!(table::contains(&score_store.developers, github_id), E_SCORE_NOT_FOUND);
+        let developer_score = table::borrow(&score_store.developers, github_id);
+        developer_score.endorsements
     }
 
     // Award achievement badge NFT
@@ -381,20 +388,21 @@ module github_score_addr::github_score {
     // Project endorsement function
     public entry fun endorse_project(
         endorser: &signer,
-        project_id: String,
+        github_id: String,
         message: String,
-    ) acquires Project {
-        let endorser_addr = std::signer::address_of(endorser);
+    ) acquires ScoreStore {
+        let endorser_addr = signer::address_of(endorser);
+        let score_store = borrow_global_mut<ScoreStore>(@github_score_addr);
         
-        assert!(exists<Project>(@github_score_addr), ERROR_PROJECT_NOT_FOUND);
-        let project = borrow_global_mut<Project>(@github_score_addr);
-        assert!(project.id == project_id, ERROR_PROJECT_NOT_FOUND);
+        // Check if project exists
+        assert!(table::contains(&score_store.projects, github_id), ERROR_PROJECT_NOT_FOUND);
+        let project_score = table::borrow_mut(&mut score_store.projects, github_id);
         
         // Check if already endorsed
         let i = 0;
-        let len = vector::length(&project.endorsements);
+        let len = vector::length(&project_score.endorsements);
         while (i < len) {
-            let endorsement = vector::borrow(&project.endorsements, i);
+            let endorsement = vector::borrow(&project_score.endorsements, i);
             assert!(endorsement.from != endorser_addr, ERROR_ALREADY_ENDORSED);
             i = i + 1;
         };
@@ -405,14 +413,123 @@ module github_score_addr::github_score {
             message,
             timestamp: timestamp::now_seconds(),
         };
-        vector::push_back(&mut project.endorsements, endorsement);
+        vector::push_back(&mut project_score.endorsements, endorsement);
     }
 
     // Get project endorsement list
     #[view]
-    public fun get_project_endorsements(project_id: String): vector<ProjectEndorsement> acquires Project {
-        let project = borrow_global<Project>(@github_score_addr);
-        assert!(project.id == project_id, ERROR_PROJECT_NOT_FOUND);
-        project.endorsements
+    public fun get_project_endorsements(github_id: String): vector<ProjectEndorsement> acquires ScoreStore {
+        let score_store = borrow_global<ScoreStore>(@github_score_addr);
+        assert!(table::contains(&score_store.projects, github_id), ERROR_PROJECT_NOT_FOUND);
+        let project_score = table::borrow(&score_store.projects, github_id);
+        project_score.endorsements
+    }
+
+    /// Submit multiple developer scores in one transaction
+    public entry fun submit_developers_scores(
+        sender: &signer,
+        github_ids: vector<String>,
+        logins: vector<String>,
+        scores: vector<u64>,
+        total_stars: vector<u64>,
+        followers: vector<u64>,
+        timestamp_sec: u64,
+    ) acquires EventStore, ScoreStore {
+        assert!(signer::address_of(sender) == @github_score_addr, E_NOT_AUTHORIZED);
+        
+        // Check all vectors have same length
+        let len = vector::length(&github_ids);
+        assert!(vector::length(&logins) == len, 0);
+        assert!(vector::length(&scores) == len, 0);
+        assert!(vector::length(&total_stars) == len, 0);
+        assert!(vector::length(&followers) == len, 0);
+        
+        let i = 0;
+        while (i < len) {
+            let github_id = *vector::borrow(&github_ids, i);
+            let login = *vector::borrow(&logins, i);
+            let score = *vector::borrow(&scores, i);
+            let stars = *vector::borrow(&total_stars, i);
+            let follower_count = *vector::borrow(&followers, i);
+            
+            let score_store = borrow_global_mut<ScoreStore>(@github_score_addr);
+            let developer_score = DeveloperScore {
+                github_id,
+                login,
+                score,
+                total_stars: stars,
+                followers: follower_count,
+                timestamp: timestamp_sec,
+                endorsements: vector::empty(),
+            };
+
+            if (table::contains(&score_store.developers, github_id)) {
+                let _old_score = table::remove(&mut score_store.developers, github_id);
+            };
+            table::add(&mut score_store.developers, github_id, developer_score);
+
+            let event_store = borrow_global_mut<EventStore>(@github_score_addr);
+            event::emit_event(&mut event_store.developer_score_events, ScoreUpdateEvent {
+                github_id,
+                score,
+                timestamp: timestamp_sec,
+            });
+            
+            i = i + 1;
+        };
+    }
+
+    /// Submit multiple project scores in one transaction
+    public entry fun submit_projects_scores(
+        sender: &signer,
+        github_ids: vector<String>,
+        names: vector<String>,
+        scores: vector<u64>,
+        stars: vector<u64>,
+        forks: vector<u64>,
+        timestamp_sec: u64,
+    ) acquires EventStore, ScoreStore {
+        assert!(signer::address_of(sender) == @github_score_addr, E_NOT_AUTHORIZED);
+        
+        // Check all vectors have same length
+        let len = vector::length(&github_ids);
+        assert!(vector::length(&names) == len, 0);
+        assert!(vector::length(&scores) == len, 0);
+        assert!(vector::length(&stars) == len, 0);
+        assert!(vector::length(&forks) == len, 0);
+        
+        let i = 0;
+        while (i < len) {
+            let github_id = *vector::borrow(&github_ids, i);
+            let name = *vector::borrow(&names, i);
+            let score = *vector::borrow(&scores, i);
+            let star_count = *vector::borrow(&stars, i);
+            let fork_count = *vector::borrow(&forks, i);
+            
+            let score_store = borrow_global_mut<ScoreStore>(@github_score_addr);
+            let project_score = ProjectScore {
+                github_id,
+                name,
+                score,
+                stars: star_count,
+                forks: fork_count,
+                timestamp: timestamp_sec,
+                endorsements: vector::empty(),
+            };
+
+            if (table::contains(&score_store.projects, github_id)) {
+                let _old_score = table::remove(&mut score_store.projects, github_id);
+            };
+            table::add(&mut score_store.projects, github_id, project_score);
+
+            let event_store = borrow_global_mut<EventStore>(@github_score_addr);
+            event::emit_event(&mut event_store.project_score_events, ScoreUpdateEvent {
+                github_id,
+                score,
+                timestamp: timestamp_sec,
+            });
+            
+            i = i + 1;
+        };
     }
 } 

@@ -89,7 +89,14 @@ export async function POST(request: Request) {
 
       console.log('Saving to database:', repoData.full_name);
 
-      // 保存到数据库
+      // 先查询现有数据
+      const { data: existingRepo } = await supabaseAdmin
+        .from('repositories')
+        .select('score, blockchain_tx, badges, endorsements')
+        .eq('id', repoData.id)
+        .single();
+
+      // 然后进行 upsert
       const { data, error } = await supabaseAdmin
         .from('repositories')
         .upsert({
@@ -104,10 +111,10 @@ export async function POST(request: Request) {
           ecosystem: null,
           sector: null,
           updated_at: repoData.updated_at,
-          score: 0,
-          blockchain_tx: null,
-          badges: [],
-          endorsements: []
+          score: existingRepo?.score || 0,
+          blockchain_tx: existingRepo?.blockchain_tx || null,
+          badges: existingRepo?.badges || [],
+          endorsements: existingRepo?.endorsements || []
         })
         .select()
         .single();
@@ -267,35 +274,60 @@ export async function POST(request: Request) {
               .from('repositories')
               .update({ 
                 score: projectScore,
-                tx: projectTxHash 
+                blockchain_tx: projectTxHash 
               })
               .eq('id', data.id);
 
             // 为每个有效的贡献者计算分数并上链
             for (const contributor of validContributors) {
+              // 查询现有开发者数据
+              const { data: existingDev } = await supabaseAdmin
+                .from('developers')
+                .select('score, blockchain_tx, badges, endorsements')
+                .eq('id', contributor.id)
+                .single();
+
+              // 计算新分数
               const developerScore = ScoreCalculator.calculateDeveloperScore({
                 followers: contributor.followers,
                 totalStars: contributor.total_stars,
-                contributions: 1, // 至少有1次贡献
+                contributions: 1,
                 recentActivity: ScoreCalculator.calculateRecentActivity(contributor.updated_at)
               });
-              contributor.score = developerScore;
-              contributor.blockchain_tx = null;
 
-              // 上传开发者数据到区块链
-              const developerTxHash = await blockchainService.uploadDeveloperData(
-                contributor,
-                developerScore
-              );
+              // 保留现有的badges和endorsements
+              contributor.score = existingDev?.score || developerScore;
+              contributor.blockchain_tx = existingDev?.blockchain_tx || null;
+              contributor.badges = existingDev?.badges || [];
+              contributor.endorsements = existingDev?.endorsements || [];
 
-              // 更新数据库中的开发者分数和交易哈希
-              await supabaseAdmin
+              // 使用upsert更新开发者数据
+              const { error: devError } = await supabaseAdmin
                 .from('developers')
-                .update({ 
-                  score: developerScore,
-                  blockchain_tx: developerTxHash 
-                })
-                .eq('id', contributor.id);
+                .upsert({
+                  ...contributor,
+                  score: developerScore, // 更新为新计算的分数
+                  // 其他字段保持不变
+                });
+
+              if (devError) {
+                console.error('Error updating developer:', devError);
+                throw devError;
+              }
+
+              // 只有当分数变化时才触发上链
+              if (!existingDev || existingDev.score !== developerScore) {
+                const developerTxHash = await blockchainService.uploadDeveloperData(
+                  contributor,
+                  developerScore
+                );
+
+                // 更新交易哈希
+                await supabaseAdmin
+                  .from('developers')
+                  .update({ blockchain_tx: developerTxHash })
+                  .eq('id', contributor.id);
+              }
             }
 
             // 保存到repository_contributors表
@@ -320,7 +352,7 @@ export async function POST(request: Request) {
               data: {
                 ...data,
                 score: projectScore,
-                tx: projectTxHash,
+                blockchain_tx: projectTxHash,
                 contributors: validContributors.map(c => ({
                   ...c,
                   score: c.score,
