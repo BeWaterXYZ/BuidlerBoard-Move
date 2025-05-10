@@ -76,34 +76,35 @@ module my_addr::buidlerboard {
 
     // :!:>view
     #[view]
-    public fun get_hackathons_max_id(owner: address): u64 acquires HackathonAggregator {
-        borrow_global<HackathonAggregator>(owner).max_id
+    public fun get_hackathons_max_id(): u64 acquires HackathonAggregator {
+        borrow_global<HackathonAggregator>(@my_addr).max_id
     }
 
     #[view]
-    public fun get_hackathons(owner: address): vector<Hackathon> acquires HackathonAggregator {
-        borrow_global<HackathonAggregator>(owner).hackathons
+    public fun get_hackathons(): vector<Hackathon> acquires HackathonAggregator {
+        borrow_global<HackathonAggregator>(@my_addr).hackathons
     }
 
     #[view]
-    public fun get_hackathon(owner: address, unique_id: u64): Hackathon acquires HackathonAggregator {
-        borrow_global<HackathonAggregator>(owner).hackathons[unique_id]
+    public fun get_hackathon(unique_id: u64): Hackathon acquires HackathonAggregator {
+        borrow_global<HackathonAggregator>(@my_addr).hackathons[unique_id]
     }
 
     #[view]
-    public fun get_projects_max_id(owner: address): u64 acquires ProjectAggregator {
-        borrow_global<ProjectAggregator>(owner).max_id
+    public fun get_projects_max_id(): u64 acquires ProjectAggregator {
+        borrow_global<ProjectAggregator>(@my_addr).max_id
     }
 
     #[view]
-    public fun get_projects(owner: address): vector<Project> acquires ProjectAggregator {
-        borrow_global<ProjectAggregator>(owner).projects
+    public fun get_projects(): vector<Project> acquires ProjectAggregator {
+        borrow_global<ProjectAggregator>(@my_addr).projects
     }
 
     #[view]
-    public fun get_project(owner: address, unique_id: u64): Project acquires ProjectAggregator {
-        borrow_global<ProjectAggregator>(owner).projects[unique_id]
+    public fun get_project(unique_id: u64): Project acquires ProjectAggregator {
+        borrow_global<ProjectAggregator>(@my_addr).projects[unique_id]
     }
+    //<:!:view
 
 
     //:!:>entry fun
