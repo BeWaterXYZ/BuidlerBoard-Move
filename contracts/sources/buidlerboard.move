@@ -43,6 +43,7 @@ module my_addr::buidlerboard {
         // basic info
         unique_id: u64,
         name: string::String,
+        category: string::String,
         github_url: string::String,
         owner: address,
         created_at: u64,
@@ -135,6 +136,7 @@ module my_addr::buidlerboard {
     public entry fun add_project(
         account: &signer, 
         name: string::String, 
+        category: string::String,
         github_url: string::String, 
         demo_url: string::String, 
         deck_url: string::String, 
@@ -144,6 +146,7 @@ module my_addr::buidlerboard {
         project_aggr.projects.push_back(Project {
             unique_id: project_aggr.max_id,
             name: name,
+            category: category,
             github_url: github_url,
             owner: signer::address_of(account),
             created_at: timestamp::now_seconds(),
