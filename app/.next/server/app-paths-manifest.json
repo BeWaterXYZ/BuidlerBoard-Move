@@ -1,5 +1,0 @@
-{
-  "/api/billboard/operation/project-list/route": "app/api/billboard/operation/project-list/route.js",
-  "/api/billboard/operation/developer-list/route": "app/api/billboard/operation/developer-list/route.js",
-  "/[lng]/page": "app/[lng]/page.js"
-}
