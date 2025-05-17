@@ -290,13 +290,13 @@ export default function Home() {
             height={100} 
           />
         </div>
-        <p className={`text-xs text-center ${theme === 'light' ? 'text-black': 'text-white-200'} mb-12`}>
+        <p className={`text-xl text-center ${theme === 'light' ? 'text-black': 'text-white-200'} mb-12`}>
           Hey, adventurer!😎 {" "}
           <a
             className="text-day cursor-pointer underline"
             onClick={handleAddProject}
           >
-            Add
+            👉 Add 👈
           </a>{" "}
           your project to the builderboard.
         </p>
