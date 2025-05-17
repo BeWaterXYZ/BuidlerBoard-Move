@@ -1,0 +1,28 @@
+{
+  "loading": "Loading...",
+  "total_stars": "{{count}} stars",
+  "followers": "{{count}} followers",
+  "score": "Score: {{score}}",
+  "tx_hash": "Tx Hash",
+  "copy_hash": "Copy transaction hash",
+  "badges": {
+    "title": "Achievement Badges",
+    "types": {
+      "1": "Star Contributor",
+      "2": "Active Developer",
+      "3": "Community Leader",
+      "4": "Code Master"
+    }
+  },
+  "endorsements": {
+    "title": "Community Endorsements",
+    "connect_wallet": "Connect wallet to endorse",
+    "write_endorsement": "Write your endorsement...",
+    "submit": "Submit Endorsement",
+    "submitting": "Submitting...",
+    "from": "From",
+    "wallet_required": "Please connect wallet first",
+    "self_endorse_error": "You cannot endorse yourself",
+    "transaction_failed": "Failed to submit endorsement"
+  }
+} 
