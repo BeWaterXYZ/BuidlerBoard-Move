@@ -58,6 +58,13 @@ import { WalletButton } from "@/components/wallet/WalletButton";
 import { useAptosWallet } from "@razorlabs/wallet-kit";
 import { isValidElement } from "react";
 import { AddProjectForm } from "@/components/AddProjectForm";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 // Add this interface declaration at the top of the file, after the imports
 declare global {
@@ -142,13 +149,10 @@ export default function Home() {
   const [demoUrl, setDemoUrl] = useState("");
   const [deckUrl, setDeckUrl] = useState("");
   const [introVideoUrl, setIntroVideoUrl] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleAddProject = () => {
-    toast({
-      title: "<% Add Project %>",
-      description: <AddProjectForm />,
-      duration: 10000, // 10 seconds
-    });
+    setIsDialogOpen(true);
   };
 
   // const {
@@ -293,13 +297,20 @@ export default function Home() {
         </div>
         <p className={`text-xs text-center ${theme === 'light' ? 'text-black': 'text-white-200'} mb-12`}>
           Hey, adventurer!😎 {" "}
-          <a
-            className="text-day cursor-pointer underline"
-            onClick={handleAddProject}
-          >
-            Add
-          </a>{" "}
-          your project to the builderboard.
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <a className="text-day cursor-pointer underline">
+                Add
+              </a>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[800px]">
+              <DialogHeader>
+                <DialogTitle>Add Project</DialogTitle>
+              </DialogHeader>
+              <AddProjectForm />
+            </DialogContent>
+          </Dialog>
+          {" "} your project to the builderboard.
         </p>
 
       </div>

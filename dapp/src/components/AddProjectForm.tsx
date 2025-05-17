@@ -84,7 +84,7 @@ export function AddProjectForm() {
   };
 
   return (
-    <div className="flex flex-col gap-4 mt-4 w-[800px]">
+    <div className="flex flex-col gap-4 mt-4 w-full">
       <div className="flex flex-col gap-2">
         <Label htmlFor="projectName">Project Name</Label>
         <Input
