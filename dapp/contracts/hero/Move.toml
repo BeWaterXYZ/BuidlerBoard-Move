@@ -1,0 +1,18 @@
+[package]
+name = "Hero"
+version = "0.0.0"
+
+[addresses]
+hero = "_"
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "release-v.1.14"
+subdir = "aptos-move/framework/aptos-framework"
+
+[dependencies.AptosTokenObjects]
+git = "https://github.com/aptos-labs/aptos-core.git"
+rev = "release-v.1.14"
+subdir = "aptos-move/framework/aptos-token-objects"
+
+[dev-dependencies]
