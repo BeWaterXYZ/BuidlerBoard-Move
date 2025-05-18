@@ -276,31 +276,32 @@ export default function Home() {
   }, [account]);
 
   return (
-    <main className="flex flex-col w-full max-w-[1000px] p-6 pb-12 md:px-8 gap-6">
-      <div className="flex justify-between items-center">
+    
+    <main className="flex flex-col w-full max-w-[1000px] mx-auto p-6 pb-12 md:px-8 gap-6">
+      <div className="flex justify-between items-center w-full">
         <NavBar />
         <WalletButton />
         <ThemeToggle />
       </div>
       <div className="flex flex-col gap-4">
-        <div className="text-4xl font-semibold tracking-tight">
-          <center><h2>Move BuilderBoard</h2></center>
+        <div className="text-4xl font-semibold tracking-tight text-center">
+          <h2>Move BuilderBoard</h2>
         </div>
         <div className="flex justify-center">
           <Image 
-            // TODO: update the satofish to the better version.
             src={theme === 'light' ? "/assets/satofish.svg": "/assets/satofish_white.svg"} 
             alt="satofish" 
             width={100} 
             height={100} 
+            className="object-contain"
           />
         </div>
-        <p className={`text-xs text-center ${theme === 'light' ? 'text-black': 'text-white-200'} mb-12`}>
+        <p className={`text-xl text-center ${theme === 'light' ? 'text-black': 'text-white-200'} mb-12`}>
           Hey, adventurer!😎 {" "}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <a className="text-day cursor-pointer underline">
-                Add
+                👉 Add 👈
               </a>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[800px]">
@@ -312,6 +313,7 @@ export default function Home() {
           </Dialog>
           {" "} your project to the builderboard.
         </p>
+
 
       </div>
       {connected && (

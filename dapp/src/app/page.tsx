@@ -275,8 +275,8 @@ export default function Home() {
   }, [account]);
 
   return (
-    <main className="flex flex-col w-full max-w-[1000px] p-6 pb-12 md:px-8 gap-6">
-      <div className="flex justify-between items-center">
+    <main className="flex flex-col w-full max-w-[1000px] mx-auto p-6 pb-12 md:px-8 gap-6">
+      <div className="flex justify-between items-center w-full">
         <NavBar />
         <WalletButton />
         <ThemeToggle />
