@@ -6,14 +6,19 @@ import type { AppProps } from "next/app";
 import "../app/globals.css";
 import localFont from 'next/font/local';
 
-const inter = localFont({
-  src: '../app/fonts/Inter-VariableFont_slnt,wght.ttf',
-  variable: '--font-sans',
-});
+// const inter = localFont({
+//   src: '../app/fonts/Inter-VariableFont_slnt,wght.ttf',
+//   variable: '--font-sans',
+// });
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <main className={`${inter.variable} font-sans`}>
+    <main className={`font-sans`}>
+      <style jsx global>{`
+        #__next {
+          width: 100%;
+        }
+      `}</style>
       <ThemeProvider
         attribute="class"
         defaultTheme="dark"
