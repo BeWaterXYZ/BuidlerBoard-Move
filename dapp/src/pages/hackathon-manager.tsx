@@ -276,8 +276,7 @@ export default function Home() {
   }, [account]);
 
   return (
-    
-    <main className="flex flex-col w-full max-w-[1000px] mx-auto p-6 pb-12 md:px-8 gap-6">
+    <main className="flex flex-col w-full max-w-[1000px] mx-auto p-6 pb-12 md:px-8 gap-6 font-sans">
       <div className="flex justify-between items-center w-full">
         <NavBar />
         <WalletButton />

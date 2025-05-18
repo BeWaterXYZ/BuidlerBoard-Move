@@ -4,7 +4,7 @@ import { ReactQueryClientProvider } from "@/components/ReactQueryClientProvider"
 import { Toaster } from "@/components/ui/toaster";
 import type { AppProps } from "next/app";
 import "../app/globals.css";
-import localFont from 'next/font/local';
+// import localFont from 'next/font/local';
 
 // const inter = localFont({
 //   src: '../app/fonts/Inter-VariableFont_slnt,wght.ttf',
@@ -13,12 +13,8 @@ import localFont from 'next/font/local';
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <main className={`font-sans`}>
-      <style jsx global>{`
-        #__next {
-          width: 100%;
-        }
-      `}</style>
+    <main>
+    {/* <main className={`${inter.variable} font-sans`}> */}
       <ThemeProvider
         attribute="class"
         defaultTheme="dark"
