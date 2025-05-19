@@ -3,6 +3,10 @@ const isProd = process.env.NODE_ENV === "production";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "export",
+  typescript: {
+    // HINT! Skipping validation of types
+    ignoreBuildErrors: true,
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

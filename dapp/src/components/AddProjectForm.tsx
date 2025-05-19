@@ -7,37 +7,67 @@ import { useToast } from "@/components/ui/use-toast";
 import { useAptosWallet } from "@razorlabs/wallet-kit";
 import { Aptos, AptosConfig, Network, InputGenerateTransactionPayloadData } from "@aptos-labs/ts-sdk";
 
+interface Project {
+  unique_id: number;
+  name: string;
+  description: string;
+  url: string;
+  category: string;
+  github_url: string;
+  demo_url: string;
+  deck_url: string;
+  intro_video_url: string;
+  owner: string;
+  rank?: number;
+}
+
 const DAPP_ADDRESS = process.env.NEXT_PUBLIC_DAPP_ADDRESS;
 const DAPP_NAME = process.env.NEXT_PUBLIC_DAPP_NAME;
 
-export function AddProjectForm() {
+interface AddProjectFormProps {
+  onClose: () => void;
+  isUpdate?: boolean;
+  project?: Project;
+  onSubmit?: (
+    unique_id: number,
+    name: string,
+    category: string,
+    githubUrl: string,
+    demoUrl: string,
+    deckUrl: string,
+    introVideoUrl: string
+  ) => Promise<void>;
+}
+
+export function AddProjectForm({ onClose, isUpdate, project, onSubmit }: AddProjectFormProps) {
   const { toast } = useToast();
   const { signAndSubmitTransaction } = useAptosWallet();
-  const [projectName, setProjectName] = useState("");
-  const [category, setCategory] = useState("");
-  const [githubUrl, setGithubUrl] = useState("");
-  const [projectDescription, setProjectDescription] = useState("");
-  const [demoUrl, setDemoUrl] = useState("");
-  const [deckUrl, setDeckUrl] = useState("");
-  const [introVideoUrl, setIntroVideoUrl] = useState("");
+  const [projectName, setProjectName] = useState(project?.name || "");
+  const [category, setCategory] = useState(project?.category || "");
+  const [githubUrl, setGithubUrl] = useState(project?.github_url || "");
+  const [demoUrl, setDemoUrl] = useState(project?.demo_url || "");
+  const [deckUrl, setDeckUrl] = useState(project?.deck_url || "");
+  const [introVideoUrl, setIntroVideoUrl] = useState(project?.intro_video_url || "");
 
   const handleSubmit = async () => {
+    if (isUpdate && onSubmit && project) {
+      await onSubmit(
+        project.unique_id,
+        projectName,
+        category,
+        githubUrl,
+        demoUrl,
+        deckUrl,
+        introVideoUrl
+      );
+      return;
+    }
+
     try {
       // Create Aptos client
       const aptosConfig = new AptosConfig({ network: Network.TESTNET });
       const aptos = new Aptos(aptosConfig);
-      
-      // !NOTE: this is the comment, not delete it.
-      // public entry fun add_project(
-      //   account: &signer, 
-      //   name: string::String, 
-      //   category: string::String,
-      //   github_url: string::String, 
-      //   demo_url: string::String, 
-      //   deck_url: string::String, 
-      //   intro_video_url: string::String) acquires ProjectAggregator {
 
-      // Prepare transaction payload
       const transaction: InputGenerateTransactionPayloadData = {
         function: `${DAPP_ADDRESS}::${DAPP_NAME}::add_project`,
         typeArguments: [],
@@ -51,28 +81,17 @@ export function AddProjectForm() {
         ],
       };
 
-      // Sign and submit transaction
       const userResponse = await signAndSubmitTransaction({
         payload: transaction,
       });
 
-      if ('hash' in userResponse && typeof userResponse.hash === 'string') {
-        // Wait for transaction to be confirmed
-        await aptos.waitForTransaction({ transactionHash: userResponse.hash });
-        // show success only if the tx is successful.
+      if (userResponse.status === "Approved") {
         toast({
           title: "Success",
           description: "Project added successfully!",
         });
+        onClose();
       }
-      // Reset form state after submission
-      setProjectName("");
-      setCategory("");
-      setGithubUrl("");
-      setProjectDescription("");
-      setDemoUrl("");
-      setDeckUrl("");
-      setIntroVideoUrl("");
     } catch (error) {
       console.error("Error submitting project:", error);
       toast({
@@ -157,7 +176,7 @@ export function AddProjectForm() {
       </div>
       <center>
         <Button onClick={handleSubmit}>
-          Submit
+          {isUpdate ? "Update" : "Submit"}
         </Button>
       </center>
     </div>

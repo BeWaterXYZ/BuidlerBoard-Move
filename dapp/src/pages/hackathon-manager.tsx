@@ -66,6 +66,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+const DAPP_ADDRESS = process.env.NEXT_PUBLIC_DAPP_ADDRESS;
+const DAPP_NAME = process.env.NEXT_PUBLIC_DAPP_NAME;
+const APTOS_NODE_URL = process.env.NEXT_PUBLIC_APTOS_NODE_URL;
+
 // Add this interface declaration at the top of the file, after the imports
 declare global {
   interface Window {
@@ -138,50 +142,626 @@ async function doGetBalance(aptos: Aptos, accountAddress: string) {
 //   });
 // }
 
+// Update the Hackathon interface
+interface Hackathon {
+  unique_id: number;  // Changed from id to unique_id
+  name: string;
+  description: string;
+  start_date: number;
+  end_date: number;
+  owner: string;
+  judges: string[];
+  winners: string[];
+  comments: string[];
+  projects: string[];
+}
+
+// Add these interfaces after the existing interfaces
+interface Project {
+  unique_id: number;
+  name: string;
+  description: string;
+  url: string;
+  category: string;
+  github_url: string;
+  demo_url: string;
+  deck_url: string;
+  intro_video_url: string;
+  owner: string;
+  rank?: number;
+  stars?: number;
+}
+
+// Mock Data for Dev.
+// const MOCK_HACKATHONS: Hackathon[] = [
+//   {
+//     name: "Web3 Builders Hackathon",
+//     description: "A hackathon focused on building the next generation of Web3 applications",
+//     start_date: 1714521600, // May 1, 2024
+//     end_date: 1717200000, // June 1, 2024
+//     owner: "0x3fb7233a48d6f0a8c50e1d1861521790af0c5d7cfaf95ec81dc5bed4541becf1"
+//   },
+//   {
+//     name: "AI & Blockchain Fusion",
+//     description: "Exploring the intersection of AI and blockchain technology",
+//     start_date: 1717200000, // June 1, 2024
+//     end_date: 1719792000, // July 1, 2024
+//     owner: "0x3fb7233a48d6f0a8c50e1d1861521790af0c5d7cfaf95ec81dc5bed4541becf1"
+//   },
+//   {
+//     name: "DeFi Innovation Challenge",
+//     description: "Building the future of decentralized finance",
+//     start_date: 1719792000, // July 1, 2024
+//     end_date: 1722470400, // August 1, 2024
+//     owner: "0x3fb7233a48d6f0a8c50e1d1861521790af0c5d7cfaf95ec81dc5bed4541becf1"
+//   },
+//   {
+//     name: "Web3 Builders Hackathon",
+//     description: "A hackathon focused on building the next generation of Web3 applications",
+//     start_date: 1714521600, // May 1, 2024
+//     end_date: 1717200000, // June 1, 2024
+//     owner: "0x3fb7233a48d6f0a8c50e1d1861521790af0c5d7cfaf95ec81dc5bed4541becf1"
+//   },
+// ];
+
+// Add this component before the HackathonCard component
+function AddJudgesDialog({ 
+  isOpen, 
+  onOpenChange, 
+  onSubmit 
+}: { 
+  isOpen: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (addresses: string[]) => void;
+}) {
+  const [addresses, setAddresses] = useState<string[]>(['']);
+  const { theme } = useTheme();
+
+  const handleAddAddress = () => {
+    setAddresses([...addresses, '']);
+  };
+
+  const handleRemoveAddress = (index: number) => {
+    setAddresses(addresses.filter((_, i) => i !== index));
+  };
+
+  const handleAddressChange = (index: number, value: string) => {
+    const newAddresses = [...addresses];
+    newAddresses[index] = value;
+    setAddresses(newAddresses);
+  };
+
+  const handleSubmit = () => {
+    // Filter out empty addresses
+    const validAddresses = addresses.filter(addr => addr.trim() !== '');
+    onSubmit(validAddresses);
+    onOpenChange(false);
+    setAddresses(['']); // Reset form
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-semibold">Add Judges</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          {addresses.map((address, index) => (
+            <div key={index} className="flex gap-2 items-center">
+              <Input
+                value={address}
+                onChange={(e) => handleAddressChange(index, e.target.value)}
+                placeholder="Enter judge's address"
+                className="flex-1"
+              />
+              {addresses.length > 1 && (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={() => handleRemoveAddress(index)}
+                >
+                  ×
+                </Button>
+              )}
+            </div>
+          ))}
+          <Button
+            variant="outline"
+            onClick={handleAddAddress}
+            className="mt-2"
+          >
+            Add Another Judge
+          </Button>
+          <Button onClick={handleSubmit} className="mt-4">
+            Submit Judges
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Add this helper function before the HackathonCard component
+function CopyableAddress({ address }: { address: string }) {
+  const { toast } = useToast();
+  const { theme } = useTheme();
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+      toast({
+        title: "Copied!",
+        description: "Address copied to clipboard",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to copy address",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'} font-mono`}>
+        {address.slice(0, 6)}...{address.slice(-4)}
+      </span>
+      <button
+        onClick={handleCopy}
+        className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+        title="Copy full address"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`${theme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}
+        >
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+// Add this component before the HackathonCard component
+function ProjectDetailsDialog({ 
+  project, 
+  isOpen, 
+  onOpenChange 
+}: { 
+  project: Project | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { theme } = useTheme();
+
+  if (!project) return null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-semibold">{project.name}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div>
+            <h3 className="font-medium mb-2">Category</h3>
+            <span className="px-2 py-1 bg-[#1E293B] rounded-[4px] text-sm text-[#F8FAFC]">
+              {project.category}
+            </span>
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">Links</h3>
+            <div className="flex flex-wrap gap-2">
+              {project.url && (
+                <a
+                  href={project.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-[#0F172A] rounded-[4px] text-sm text-[#94A3B8] hover:text-[#F8FAFC]"
+                >
+                  Website
+                </a>
+              )}
+              {project.github_url && (
+                <a
+                  href={project.github_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-[#0F172A] rounded-[4px] text-sm text-[#94A3B8] hover:text-[#F8FAFC]"
+                >
+                  GitHub
+                </a>
+              )}
+              {project.demo_url && (
+                <a
+                  href={project.demo_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-[#0F172A] rounded-[4px] text-sm text-[#94A3B8] hover:text-[#F8FAFC]"
+                >
+                  Demo
+                </a>
+              )}
+              {project.deck_url && (
+                <a
+                  href={project.deck_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-[#0F172A] rounded-[4px] text-sm text-[#94A3B8] hover:text-[#F8FAFC]"
+                >
+                  Deck
+                </a>
+              )}
+              {project.intro_video_url && (
+                <a
+                  href={project.intro_video_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-[#0F172A] rounded-[4px] text-sm text-[#94A3B8] hover:text-[#F8FAFC]"
+                >
+                  Video
+                </a>
+              )}
+            </div>
+          </div>
+          <div>
+            <h3 className="font-medium mb-2">Owner</h3>
+            <CopyableAddress address={project.owner} />
+          </div>
+          {project.stars !== undefined && (
+            <div>
+              <h3 className="font-medium mb-2">GitHub Stars</h3>
+              <p className={`text-sm ${theme === 'light' ? 'text-gray-600' : 'text-gray-300'}`}>
+                ⭐ {project.stars}
+              </p>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Update the HackathonCard component
+function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
+  const { theme } = useTheme();
+  const [isAddJudgesOpen, setIsAddJudgesOpen] = useState(false);
+  const { signAndSubmitTransaction } = useAptosWallet();
+  const { toast } = useToast();
+  const [aptos, setAptos] = useState<Aptos | null>(null);
+  const [accountInfo, setAccountInfo] = useState<AccountInfo | null>(null);
+  const { adapter } = useAptosWallet();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  
+  // Add useEffect to initialize aptos client
+  useEffect(() => {
+    const aptosConfig = new AptosConfig({
+      network: Network.TESTNET,
+      fullnode: APTOS_NODE_URL,
+    });
+    setAptos(new Aptos(aptosConfig));
+  }, []);
+
+  // Add useEffect to get account info
+  useEffect(() => {
+    const getAccount = async () => {
+      if (adapter?.account) {
+        const accountInfo = await adapter.account();
+        setAccountInfo(accountInfo as unknown as AccountInfo);
+      }
+    };
+    getAccount();
+  }, [adapter]);
+
+  // Add useEffect to fetch projects
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (aptos) {
+        try {
+          const fetchedProjects = await doGetProjects(aptos);
+          setProjects(fetchedProjects);
+        } catch (error) {
+          console.error("Error fetching projects:", error);
+        }
+      }
+    };
+
+    fetchProjects();
+  }, [aptos]);
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const handleAddJudges = async (addresses: string[]) => {
+    try {
+      // Convert addresses to the correct format (remove 0x prefix if present)
+      const formattedAddresses = addresses.map(addr => 
+        addr.startsWith('0x') ? addr.slice(2) : addr
+      );
+
+      const transaction: InputGenerateTransactionPayloadData = {
+        function: `${DAPP_ADDRESS}::${DAPP_NAME}::add_judges`,
+        typeArguments: [],
+        functionArguments: [
+          hackathon.unique_id,
+          formattedAddresses
+        ],
+      };
+
+      const userResponse = await signAndSubmitTransaction({
+        payload: transaction,
+      });
+
+      if (userResponse.status !== UserResponseStatus.APPROVED) {
+        throw new Error(userResponse.status);
+      }
+
+      // Wait for transaction to be confirmed
+      const hash = (userResponse as unknown as { args: { hash: string } }).args.hash;
+      if (aptos) {
+        await aptos.waitForTransaction({ transactionHash: hash });
+      }
+
+      toast({
+        title: "Success",
+        description: "Judges added successfully!",
+      });
+
+      // Refresh the hackathon list
+      if (aptos && accountInfo) {
+        const currentAddress = getAddressString(accountInfo);
+        if (currentAddress) {
+          const fetchedHackathons = await doGetHackathons(aptos, `0x${currentAddress}`);
+          // Update the parent component's hackathons state
+          const event = new CustomEvent('hackathonsUpdated', { detail: fetchedHackathons });
+          window.dispatchEvent(event);
+        }
+      }
+    } catch (error) {
+      console.error('Error adding judges:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add judges. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Card className="w-full hover:shadow-lg transition-shadow">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold">{hackathon.name}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          <p className={`text-xs ${theme === 'light' ? 'text-gray-600' : 'text-gray-300'}`}>
+            {hackathon.description}
+          </p>
+          <div className="grid grid-cols-2 gap-4 text-xs">
+            <div>
+              <p className="font-semibold text-xs">Start Date</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'} font-mono`}>
+                
+                {formatDate(hackathon.start_date)}
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-xs">End Date</p>
+              <p className={`text-xs ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'} font-mono`}>
+                {formatDate(hackathon.end_date)}
+              </p>
+            </div>
+          </div>
+          <div className="pt-2">
+            <p className="font-semibold text-s">Owner</p>
+            <CopyableAddress address={hackathon.owner} />
+          </div>
+          {/* Show judges, projects, winners and comments */}
+          <div className="flex flex-col gap-2">
+            <p className="font-semibold text-s">Judges</p>
+            <div className="space-y-1">
+                {/* Show not yet if judges is empty */}
+              {hackathon.judges.length === 0 ? (
+                <p className="text-xs text-gray-500">Not yet</p>
+              ) : (
+                hackathon.judges.map((judge) => (
+                  <CopyableAddress key={judge} address={judge} />
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <p className="font-semibold text-s">Projects</p>
+            <div className="space-y-1"> 
+                {/* Show not yet if projects is empty */}
+              {hackathon.projects.length === 0 ? (
+                <p className="text-xs text-gray-500">Not yet</p>
+              ) : (
+                hackathon.projects.map((projectId) => {
+                  const project = projects.find(p => p.unique_id.toString() === projectId);
+                  return (
+                    <div key={projectId} className="flex items-center justify-between">
+                      <span className="text-sm">{project ? project.name : 'Loading...'}</span>
+                      <button 
+                        className="text-sm text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                        onClick={() => {
+                          if (project) {
+                            setSelectedProject(project);
+                            setIsProjectDetailsOpen(true);
+                          }
+                        }}
+                        disabled={!project}
+                      >
+                        View Details
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        
+          <div className="flex flex-col gap-2">
+            <p className="font-semibold text-s">Winners</p>
+            <div className="space-y-1">
+                {/* Show not yet if winners is empty */}
+              {hackathon.winners.length === 0 ? (
+                <p className="text-xs text-gray-500">Not yet</p>
+              ) : (
+                hackathon.winners.map((winner) => (
+                  <CopyableAddress key={winner} address={winner} />
+                ))
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="font-semibold text-s">Comments</p>
+            <div className="space-y-1">
+                {/* Show not yet if comments is empty */}   
+              {hackathon.comments.length === 0 ? (
+                <p className="text-xs text-gray-500">Not yet</p>
+              ) : (
+                hackathon.comments.map((comment) => (
+                  <p key={comment} className="text-xs">{comment}</p>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">     
+            <Button onClick={() => setIsAddJudgesOpen(true)}>Add Judges</Button>
+            <Button>Add Winners and Comments</Button>
+          </div>
+        </div>
+      </CardContent>
+      <AddJudgesDialog
+        isOpen={isAddJudgesOpen}
+        onOpenChange={setIsAddJudgesOpen}
+        onSubmit={handleAddJudges}
+      />
+      <ProjectDetailsDialog
+        project={selectedProject}
+        isOpen={isProjectDetailsOpen}
+        onOpenChange={setIsProjectDetailsOpen}
+      />
+    </Card>
+  );
+}
+
+// Add this helper function before the Home component
+function getAddressString(account: AccountInfo | null): string | null {
+  if (!account?.address) return null;
+  
+  try {
+    if (typeof account.address === 'object' && 'data' in account.address) {
+      const addressData = account.address.data;
+      return Object.values(addressData)
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+    
+    if (typeof account.address === 'string') {
+      return account.address;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error processing address:', error);
+    return null;
+  }
+}
+
+// Add this function after the doGetBalance function
+async function doGetHackathons(aptos: Aptos, _accountAddress: string) {
+    console.log("func", `${DAPP_ADDRESS}::${DAPP_NAME}::get_hackathons`);
+  try {
+    const [hackathons] = await aptos.view({
+      payload: {
+        function: `${DAPP_ADDRESS}::${DAPP_NAME}::get_hackathons`,
+        typeArguments: [],
+        functionArguments: [],
+      },
+    });
+    console.log("hackathons", hackathons);
+    return hackathons as Hackathon[];
+  } catch (error) {
+    console.error("Error fetching hackathons:", error);
+    return [];
+  }
+}
+
+// Add this function after doGetHackathons
+async function doGetProjects(aptos: Aptos) {
+  try {
+    const [projects] = await aptos.view({
+      payload: {
+        function: `${DAPP_ADDRESS}::${DAPP_NAME}::get_projects`,
+        typeArguments: [],
+        functionArguments: [],
+      },
+    });
+    return projects as Project[];
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return [];
+  }
+}
+
 export default function Home() {
   const { toast } = useToast();
   const { theme } = useTheme();
-  const [projectName, setProjectName] = useState("");
-  const [projectDescription, setProjectDescription] = useState("");
-  const [projectUrl, setProjectUrl] = useState("");
-  const [category, setCategory] = useState("");
-  const [githubUrl, setGithubUrl] = useState("");
-  const [demoUrl, setDemoUrl] = useState("");
-  const [deckUrl, setDeckUrl] = useState("");
-  const [introVideoUrl, setIntroVideoUrl] = useState("");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [hackathons, setHackathons] = useState<Hackathon[]>([]);
 
-  const handleAddProject = () => {
+  // Add event listener for hackathon updates
+  useEffect(() => {
+    const handleHackathonsUpdate = (event: CustomEvent<Hackathon[]>) => {
+      setHackathons(event.detail);
+    };
+
+    window.addEventListener('hackathonsUpdated', handleHackathonsUpdate as EventListener);
+
+    return () => {
+      window.removeEventListener('hackathonsUpdated', handleHackathonsUpdate as EventListener);
+    };
+  }, []);
+
+  const handleAddHackathon = () => {
     setIsDialogOpen(true);
   };
 
-  // const {
-  //   account,
-  //   connected,
-  //   network,
-  //   wallet,
-  //   changeNetwork,
-  //   signAndSubmitTransaction,
-  // } = useWallet();
   const { connected, disconnect, account, signAndSubmitTransaction, adapter } =
     useAptosWallet();
   const [accountInfo, setAccountInfo] = useState<AccountInfo| null>(null);
-
-  // Move these inside useEffect to only run after connection
-  // const [adapter, setAdapter] = useState<AptosWallet | null>(null);
   const [aptos, setAptos] = useState<Aptos | null>(null);
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
 
   useEffect(() => {
     if (connected) {
-      // const nightly = window.nightly?.aptos as AptosWallet;
-      // // const nightlyAdapter = nightly?.standardWallet as AptosWallet;
-      // console.log("nightlyAdapter", nightly);
-      // setAdapter(nightly);
-
       const aptosConfig = new AptosConfig({
         network: Network.TESTNET,
-        fullnode: "https://aptos.testnet.porto.movementlabs.xyz/v1",
+        fullnode: APTOS_NODE_URL,
       });
       setAptos(new Aptos(aptosConfig));
     }
@@ -206,34 +786,26 @@ export default function Home() {
 
     getNetwork();
   }, [adapter]);
+  
+  // Add this useEffect to fetch hackathons when connected
+  useEffect(() => {
+    const fetchHackathons = async () => {
+      if (aptos && accountInfo) {
+        const currentAddress = getAddressString(accountInfo);
+        if (currentAddress) {
+          const fetchedHackathons = await doGetHackathons(aptos, `0x${currentAddress}`);
+          console.log("fetchedHackathons", fetchedHackathons);
+          setHackathons(fetchedHackathons);
+        }
+      }
+    };
 
-  const getBalance = useCallback(async () => {
-    if (!adapter || !aptos) return;
-    const account = await adapter.account();
-    const balance = await doGetBalance(aptos, account.address.toString());
-    toast({
-      title: "balance",
-      description: balance!.toString(),
-    });
-  }, [aptos, account]);
+    fetchHackathons();
+  }, [aptos, accountInfo]);
 
-  const getBalanceByResourceWay = useCallback(async () => {
-    if (!adapter || !aptos) return;
-    const account = await adapter.account();
-    const resp = await doGetBalanceByResourceWay(aptos, account.address.toString());
-    toast({
-      title: "balance by resource way",
-      description: resp!.coin.value.toString(),
-    });
-  }, [aptos, account]);
-
-  // Example usage within your component:
-  const handleTransaction = useCallback(async () => {
-    // Docs: https://docs.nightly.app/docs/aptos/solana/connect
-    // console.log("info", account, adapter, aptos);
+  const handleSubmit = useCallback(async () => {
     if (!account?.address) return;
     const network = await adapter?.network();
-    // optional: only works if the adapter supports network change.
     if (network?.chainId !== 177) {
       try {
         await adapter?.changeNetwork({ name: Network.TESTNET, chainId: 177 });
@@ -245,12 +817,19 @@ export default function Home() {
       network: network?.name || Network.TESTNET,
     });
     const aptosClient = new Aptos(aptosConfig);
+
+    // Convert datetime-local values to Unix timestamps
+    const start_date = Math.floor(new Date(startTime).getTime() / 1000);
+    const end_date = Math.floor(new Date(endTime).getTime() / 1000);
+
     const transaction: InputGenerateTransactionPayloadData = {
-      function: "0x1::coin::transfer",
-      typeArguments: ["0x1::aptos_coin::AptosCoin"],
+      function: `${DAPP_ADDRESS}::${DAPP_NAME}::add_hackathon`,
+      typeArguments: [],
       functionArguments: [
-        "0x960dbc655b847cad38b6dd056913086e5e0475abc27152b81570fd302cb10c38",
-        100,
+        name,
+        description,
+        start_date,
+        end_date
       ],
     };
 
@@ -261,22 +840,33 @@ export default function Home() {
     if (userResponse.status !== UserResponseStatus.APPROVED) {
       throw new Error(userResponse.status);
     }
-    // Confirm withdraw in backend
-    const hash = (userResponse as unknown as { args: { hash: string } }).args
-      .hash;
+    const hash = (userResponse as unknown as { args: { hash: string } }).args.hash;
     try {
       await aptosClient.waitForTransaction({ transactionHash: hash });
+      toast({
+        title: "Success",
+        description: "Hackathon added successfully!",
+      });
+      // refresh the hackathon list
+      if (aptos && accountInfo) {
+        const currentAddress = getAddressString(accountInfo);
+        if (currentAddress) {
+          const fetchedHackathons = await doGetHackathons(aptos, `0x${currentAddress}`);
+          setHackathons(fetchedHackathons);
+        }
+      }
     } catch (error) {
       console.error(error);
+      toast({
+        title: "Error",
+        description: "Failed to add hackathon. Please try again.",
+        variant: "destructive",
+      });
     }
-    toast({
-      title: userResponse.status,
-      description: "This transaction has been " + userResponse.status,
-    });
-  }, [account]);
+  }, [account, name, description, startTime, endTime]);
 
   return (
-    <main className="flex flex-col w-full max-w-[1000px] mx-auto p-6 pb-12 md:px-8 gap-6 font-sans">
+    <main className="flex flex-col w-full max-w-[1333px] mx-auto p-6 pb-12 md:px-8 gap-6">
       <div className="flex justify-between items-center w-full">
         <NavBar />
         <WalletButton />
@@ -284,7 +874,8 @@ export default function Home() {
       </div>
       <div className="flex flex-col gap-4">
         <div className="text-4xl font-semibold tracking-tight text-center">
-          <h2>Move BuilderBoard</h2>
+            {/* HINT: not modify the text */}
+          <h2>Hackathon Manag3r</h2>
         </div>
         <div className="flex justify-center">
           <Image 
@@ -295,104 +886,71 @@ export default function Home() {
             className="object-contain"
           />
         </div>
-        <p className={`text-xl text-center ${theme === 'light' ? 'text-black': 'text-white-200'} mb-12`}>
-          Hey, adventurer!😎 {" "}
+        <p className={`text-xl text-center ${theme === 'light' ? 'text-gray-500' : 'text-gray-400'} mb-12`}>
+          How about {" "}
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <a className="text-day cursor-pointer underline">
-                👉 Add 👈
-              </a>
+              <button className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+                {/* HINT: not modify the text */}
+                👉 Hodl 👈
+              </button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[800px]">
               <DialogHeader>
-                <DialogTitle>Add Project</DialogTitle>
+                <DialogTitle className="text-2xl font-semibold">Create Hackathon</DialogTitle>
               </DialogHeader>
-              <AddProjectForm />
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter hackathon name"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Enter hackathon description"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="startTime">Start Time</Label>
+                  <Input
+                    id="startTime"
+                    type="datetime-local"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="endTime">End Time</Label>
+                  <Input
+                    id="endTime"
+                    type="datetime-local"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+                <Button onClick={handleSubmit}>Create Hackathon</Button>
+              </div>
             </DialogContent>
           </Dialog>
-          {" "} your project to the builderboard.
+          {" "} a fully-on-chain hackathon?
         </p>
-
-
       </div>
-      {connected && (
-        <>
-          <button
-            onClick={getBalanceByResourceWay}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            // disabled={!connected || !adapter || !aptos}
-          >
-            Get Resource Example: Get Balance
-          </button>
 
-          <button
-            onClick={getBalance}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            // disabled={!connected || !adapter || !aptos}
-          >
-            View Func Example: Get Balance
-          </button>
-          <button
-            onClick={handleTransaction}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
-            // disabled={!connected || !adapter || !aptos}
-          >
-            Send Transaction Example: Transfer
-          </button>
-          <WalletConnection
-            // account={
-            //   {
-            //     address: account?.address || "",
-            //     publicKey: account?.publicKey || "",
-            //     minKeysRequired: undefined,
-            //     ansName: undefined,
-            //   } as AccountInfo
-            account={accountInfo}
-            network={networkInfo}
-            wallet={
-              {
-                name: adapter?.name || "",
-                icon: adapter?.icon || "",
-                url: "",
-              } as WalletInfo
-            }
-          />
-        </>
-      )}
-      {/* <div className="flex justify-between gap-6 pb-10">
-        
-        <div className="flex flex-col gap-2 md:gap-3">
-          <h1 className="text-xl sm:text-3xl font-semibold tracking-tight">
-            Scaffold Movement
-            {network?.name ? ` — ${network.name}` : ""}
-          </h1>
-          <a
-            href="https://github.com/aptos-labs/aptos-wallet-adapter/tree/main/apps/nextjs-example"
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-muted-foreground underline underline-offset-2 font-medium leading-none"
-          >
-            Demo App Source Code
-          </a>
-        </div>
-      </div> */}
-      {/* {connected && isMainnet(connected, network?.name) && (
-        <Alert variant="warning">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Warning</AlertTitle>
-          <AlertDescription>
-            The transactions flows below will not work on the Mainnet network.
-          </AlertDescription>
-        </Alert>
-      )} */}
-      {connected && (
-        <>
-          <SingleSigner />
-          {/* <TransactionParameters />
-          <Sponsor />
-          <MultiAgent /> */}
-        </>
-      )}
+      {/* Update the hackathon gallery to use fetched hackathons */}
+      <center><h2 className="text-4xl font-semibold">My Hackath0ns</h2></center>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+        {hackathons.map((hackathon, index) => (
+          <HackathonCard key={index} hackathon={hackathon} />
+        ))}
+      </div>
     </main>
   );
 }
@@ -413,29 +971,6 @@ function WalletConnection({ account, network, wallet }: WalletConnectionProps) {
 
   const isNetworkChangeSupported = wallet?.name === "Nightly";
   
-  // Add function to handle address conversion
-  const getAddressString = () => {
-    if (!account?.address) return null;
-    
-    try {
-      if (typeof account.address === 'object' && 'data' in account.address) {
-        const addressData = account.address.data;
-        return Object.values(addressData)
-          .map(b => b.toString(16).padStart(2, '0'))
-          .join('');
-      }
-      
-      if (typeof account.address === 'string') {
-        return account.address;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Error processing address:', error);
-      return null;
-    }
-  };
-
   const getPublicKeyString = () => {
     if (!account?.publicKey) return null;
     
@@ -454,7 +989,7 @@ function WalletConnection({ account, network, wallet }: WalletConnectionProps) {
     }
   };
 
-  const address = getAddressString();
+  const address = getAddressString(account);
   const publicKey = getPublicKeyString();
 
   const items = [
@@ -499,122 +1034,6 @@ function WalletConnection({ account, network, wallet }: WalletConnectionProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Wallet Connection</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-10 pt-6">
-        <div className="flex flex-col gap-6">
-          <h4 className="text-lg font-medium">Wallet Details</h4>
-          <LabelValueGrid
-            items={[
-              {
-                label: "Icon",
-                value: wallet?.icon ? (
-                  <Image
-                    src={wallet.icon}
-                    alt={wallet.name}
-                    width={24}
-                    height={24}
-                  />
-                ) : (
-                  "Not Present"
-                ),
-              },
-              {
-                label: "Name",
-                value: wallet?.name ?? "Not Present",
-              },
-              {
-                label: "URL",
-                value: wallet?.url ? (
-                  <a
-                    href={wallet.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 dark:text-blue-300"
-                  >
-                    {wallet.url}
-                  </a>
-                ) : (
-                  "Not Present"
-                ),
-              },
-            ]}
-          />
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <h4 className="text-lg font-medium">Account Info</h4>
-          <LabelValueGrid items={items} />
-        </div>
-
-        <div className="flex flex-col gap-6">
-          <h4 className="text-lg font-medium">Network Info</h4>
-          <LabelValueGrid
-            items={[
-              {
-                label: "Network name",
-                value: (
-                  <DisplayValue
-                    value={network?.name ?? "Not Present"}
-                    isCorrect={isValidNetworkName()}
-                    expected={Object.values<string>(Network).join(", ")}
-                  />
-                ),
-              },
-              {
-                label: "URL",
-                value: network?.url ? (
-                  <a
-                    href={network.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-blue-600 dark:text-blue-300"
-                  >
-                    {network.url}
-                  </a>
-                ) : (
-                  "Not Present"
-                ),
-              },
-              {
-                label: "Chain ID",
-                value: network?.chainId ?? "Not Present",
-              },
-            ]}
-          />
-        </div>
-
-        {/* <div className="flex flex-col gap-6">
-          <h4 className="text-lg font-medium">Change Network</h4>
-          <RadioGroup
-            value={network?.name}
-            orientation="horizontal"
-            className="flex gap-6"
-            onValueChange={(value: Network) => changeNetwork(value)}
-            disabled={!isNetworkChangeSupported}
-          >
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value={Network.DEVNET} id="devnet-radio" />
-              <Label htmlFor="devnet-radio">Devnet</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value={Network.TESTNET} id="testnet-radio" />
-              <Label htmlFor="testnet-radio">Testnet</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value={Network.MAINNET} id="mainnet-radio" />
-              <Label htmlFor="mainnet-radio">Mainnet</Label>
-            </div>
-          </RadioGroup>
-          {!isNetworkChangeSupported && (
-            <div className="text-sm text-red-600 dark:text-red-400">
-              * {wallet?.name ?? "This wallet"} does not support network change
-              requests
-            </div>
-          )}
-        </div> */}
-      </CardContent>
     </Card>
   );
 }

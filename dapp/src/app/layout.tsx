@@ -1,49 +1,23 @@
 // import "@aptos-labs/wallet-adapter-ant-design/dist/index.css";
-import "./globals.css";
+import './globals.css';
+import { Inter } from 'next/font/google';
+import { Providers } from './providers';
+import type { Metadata } from 'next';
+import { PropsWithChildren } from 'react';
 
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { WalletProvider } from "@/components/WalletProvider";
-import { Toaster } from "@/components/ui/toaster";
-import { cn } from "@/lib/utils";
-import type { Metadata } from "next";
-import { Inter as FontSans } from "next/font/google";
-import { PropsWithChildren } from "react";
-import { ReactQueryClientProvider } from "@/components/ReactQueryClientProvider";
-
-// const fontSans = FontSans({
-//   subsets: ["latin"],
-//   variable: "--font-sans",
-// });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Scaffold-Move",
+  title: "Buidlerboard",
   description:
-    "🧪 An open-source, up-to-date toolkit for building decentralized applications (dapps) on the Move Chains.",
+    "Cool-oriented programming.",
 };
 
-export default function RootLayout({ children }: PropsWithChildren) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body
-        className={cn(
-          "flex justify-center min-h-screen bg-background font-sans antialiased",
-          // fontSans.variable
-        )}
-      >
-        <ThemeProvider
-          attribute="class"
-          // hint: set the default theme here.
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ReactQueryClientProvider>
-            <WalletProvider>
-              {children}
-              <Toaster />
-            </WalletProvider>
-          </ReactQueryClientProvider>
-        </ThemeProvider>
+      <body className={`${inter.className} flex justify-center min-h-screen bg-background font-sans antialiased`}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

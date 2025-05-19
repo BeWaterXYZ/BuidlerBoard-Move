@@ -1,16 +1,52 @@
 module my_addr::buidlerboard {
-    use std::error;
+    // use std::error;
     use std::signer;
     use std::string;
     use std::vector;
-    use aptos_framework::event;
+    use std::table::{Self, Table};
+
     use aptos_framework::timestamp;
+    use aptos_framework::account;
+    
+    use aptos_framework::event::{Self, EventHandle};
     
 
     #[test_only]
     use std::debug;
 
-    //:!:>resource
+    const ERR_NOT_OWNER: u64 = 1001;
+
+    //:!:> event resource
+    // TODO: impl the event in the entry fun.
+    struct AddHackathonEvent has drop, store {
+        unique_id: u64,
+        name: string::String,
+        description: string::String,
+        start_date: u64,
+        end_date: u64,
+    }
+
+    struct AddHackathonEventSet has key, store {
+        add_hackathon_events: EventHandle<AddHackathonEvent>,
+    }
+
+    struct AddProjectEvent has drop, store {
+        unique_id: u64,
+        name: string::String,
+        category: string::String,
+        github_url: string::String,
+        demo_url: string::String,
+        deck_url: string::String,
+        intro_video_url: string::String,
+    }
+
+    struct AddProjectEventSet has key, store {
+        add_project_events: EventHandle<AddProjectEvent>,
+    }
+
+    // <:!: event resource
+
+    //:!:> normal resource
     struct Hackathon has key, store, drop, copy {
         unique_id: u64,
         // only owner can update the hackathon.
@@ -19,23 +55,23 @@ module my_addr::buidlerboard {
         description: string::String,
         start_date: u64,
         end_date: u64,
+        judges: vector<address>,
         winners: vector<u64>,
         comments: vector<string::String>,
+        projects: vector<u64>,
     }
 
     struct HackathonAggregator has key {
         max_id: u64,
-        hackathons: vector<Hackathon>,
-        // add_hackathon_events: event::EventHandle<AddHackathonEvent>,
+        hackathons: Table<u64, Hackathon>,
+        add_hackathon_events: event::EventHandle<AddHackathonEvent>,
         // update_hackathon_events: event::EventHandle<UpdateHackathonEvent>
     }
 
-
-
     struct ProjectAggregator has key {
         max_id: u64,
-        projects: vector<Project>,
-        // add_project_events: event::EventHandle<AddProjectEvent>,
+        projects: Table<u64, Project>,
+        add_project_events: event::EventHandle<AddProjectEvent>,
         // update_project_events: event::EventHandle<UpdateProjectEvent>
     }
 
@@ -55,9 +91,9 @@ module my_addr::buidlerboard {
         intro_video_url: string::String,
 
         // activities
-        activities: vector<Hackathon>,
+        activities: vector<u64>,
     }
-    //<:!:resource
+    //<:!: normal resource
 
 
     //:!:>init
@@ -65,11 +101,13 @@ module my_addr::buidlerboard {
     fun init_module(account: &signer) {
         move_to(account, HackathonAggregator {
             max_id: 0,
-            hackathons: vector::empty(),
+            hackathons: table::new(),
+            add_hackathon_events: account::new_event_handle<AddHackathonEvent>(account),
         });
         move_to(account, ProjectAggregator {
             max_id: 0,
-            projects: vector::empty(),
+            projects: table::new(),
+            add_project_events: account::new_event_handle<AddProjectEvent>(account),
         });
     }
     //<:!:init
@@ -82,12 +120,20 @@ module my_addr::buidlerboard {
 
     #[view]
     public fun get_hackathons(): vector<Hackathon> acquires HackathonAggregator {
-        borrow_global<HackathonAggregator>(@my_addr).hackathons
+        let hackathon_aggr = borrow_global<HackathonAggregator>(@my_addr);
+        let hackathons = vector::empty<Hackathon>();
+        let i = 0;
+        while (i < hackathon_aggr.max_id) {
+            vector::push_back(&mut hackathons, *table::borrow(&hackathon_aggr.hackathons, i));
+            i = i + 1;
+        };
+        hackathons
     }
 
     #[view]
     public fun get_hackathon(unique_id: u64): Hackathon acquires HackathonAggregator {
-        borrow_global<HackathonAggregator>(@my_addr).hackathons[unique_id]
+        let hackathon_aggr = borrow_global<HackathonAggregator>(@my_addr);
+        *table::borrow(&hackathon_aggr.hackathons, unique_id)
     }
 
     #[view]
@@ -97,12 +143,20 @@ module my_addr::buidlerboard {
 
     #[view]
     public fun get_projects(): vector<Project> acquires ProjectAggregator {
-        borrow_global<ProjectAggregator>(@my_addr).projects
+        let project_aggr = borrow_global<ProjectAggregator>(@my_addr);
+        let projects = vector::empty<Project>();
+        let i = 0;
+        while (i < project_aggr.max_id) {
+            vector::push_back(&mut projects, *table::borrow(&project_aggr.projects, i));
+            i = i + 1;
+        };
+        projects
     }
 
     #[view]
     public fun get_project(unique_id: u64): Project acquires ProjectAggregator {
-        borrow_global<ProjectAggregator>(@my_addr).projects[unique_id]
+        let project_aggr = borrow_global<ProjectAggregator>(@my_addr);
+        *table::borrow(&project_aggr.projects, unique_id)
     }
     //<:!:view
 
@@ -117,20 +171,35 @@ module my_addr::buidlerboard {
         start_date: u64, 
         end_date: u64) acquires HackathonAggregator {
         let hackathon_aggr = borrow_global_mut<HackathonAggregator>(@my_addr);
-        hackathon_aggr.max_id = hackathon_aggr.max_id + 1;
-        hackathon_aggr.hackathons.push_back(Hackathon {
+
+        table::add(&mut hackathon_aggr.hackathons, hackathon_aggr.max_id, Hackathon {
             unique_id: hackathon_aggr.max_id,
             name: name,
             description: description,
             owner: signer::address_of(account),
             start_date: start_date,
             end_date: end_date,
+            judges: vector::empty(),
             winners: vector::empty(),
             comments: vector::empty(),
+            projects: vector::empty(),
         });
-    }
 
-    
+        // update the max id after add the hackathon.
+        hackathon_aggr.max_id = hackathon_aggr.max_id + 1;
+
+        // // emit event
+        // event::emit_event<AddHackathonEvent>(
+        //     &mut borrow_global_mut<AddHackathonEventSet>(@my_addr).add_hackathon_events,
+        //     AddHackathonEvent {
+        //         unique_id: hackathon_aggr.max_id,
+        //         name: name,
+        //         description: description,
+        //         start_date: start_date,
+        //         end_date: end_date,
+        //     }
+        // );
+    }
 
     // Add a project to the buidlerboard.
 
@@ -143,8 +212,8 @@ module my_addr::buidlerboard {
         deck_url: string::String, 
         intro_video_url: string::String) acquires ProjectAggregator {
         let project_aggr = borrow_global_mut<ProjectAggregator>(@my_addr);
-        project_aggr.max_id = project_aggr.max_id + 1;
-        project_aggr.projects.push_back(Project {
+        
+        table::add(&mut project_aggr.projects, project_aggr.max_id, Project {
             unique_id: project_aggr.max_id,
             name: name,
             category: category,
@@ -157,5 +226,103 @@ module my_addr::buidlerboard {
             intro_video_url: intro_video_url,
             activities: vector::empty(),
         });
+
+        // update the max id after add the project.
+        project_aggr.max_id = project_aggr.max_id + 1;
+
+        // emit event
+        // event::emit_event<AddProjectEvent>(
+        //     &mut borrow_global_mut<AddProjectEventSet>(@my_addr).add_project_events,
+        //     AddProjectEvent {
+        //         unique_id: project_aggr.max_id,
+        //         name: name,
+        //         category: category,
+        //         github_url: github_url,
+        //         demo_url: demo_url,
+        //         deck_url: deck_url,
+        //         intro_video_url: intro_video_url,
+        //     }
+        // );
     }
+
+    public entry fun update_project(
+        account: &signer,
+        project_unique_id: u64,
+        name: string::String,
+        category: string::String,
+        github_url: string::String,
+        demo_url: string::String,
+        deck_url: string::String,
+        intro_video_url: string::String
+    ) acquires ProjectAggregator {
+        let project_aggr = borrow_global_mut<ProjectAggregator>(@my_addr);
+        let project = table::borrow_mut(&mut project_aggr.projects, project_unique_id);
+
+        // Check if the account is the owner of the project
+        assert!(project.owner == signer::address_of(account), ERR_NOT_OWNER);
+
+        project.name = name;
+        project.category = category;
+        project.github_url = github_url;
+        project.demo_url = demo_url;
+        project.deck_url = deck_url;
+        project.intro_video_url = intro_video_url;
+        project.updated_at = timestamp::now_seconds();
+    }
+
+    // Only project owner can add project to hackathon.
+    public entry fun add_project_to_hackathon(
+        account: &signer,
+        project_unique_id: u64,
+        hackathon_unique_id: u64
+    ) acquires ProjectAggregator, HackathonAggregator {
+        let project_aggr = borrow_global_mut<ProjectAggregator>(@my_addr);
+        let hackathon_aggr = borrow_global_mut<HackathonAggregator>(@my_addr);
+
+        let project = table::borrow_mut(&mut project_aggr.projects, project_unique_id);
+        let hackathon = table::borrow_mut(&mut hackathon_aggr.hackathons, hackathon_unique_id);
+
+        // Check if the account is the owner of the project
+        assert!(project.owner == signer::address_of(account), 1);
+
+        // link the project & the hackathon
+        vector::push_back(&mut project.activities, hackathon_unique_id);
+        vector::push_back(&mut hackathon.projects, project_unique_id);
+    }
+
+    // Only hackathon owner can add judges.
+    public entry fun add_judges(
+        account: &signer,
+        hackathon_unique_id: u64,
+        judges: vector<address>
+    ) acquires HackathonAggregator {
+        let hackathon_aggr = borrow_global_mut<HackathonAggregator>(@my_addr);
+        let hackathon = table::borrow_mut(&mut hackathon_aggr.hackathons, hackathon_unique_id);
+
+        // Check if the account is the owner of the hackathon
+        assert!(hackathon.owner == signer::address_of(account), ERR_NOT_OWNER);
+
+        hackathon.judges = judges;
+    }
+
+    // Recommend use arweave to store the comment, and record the judge address in the comment.
+    // Only hackathon owner can add winner.
+    public entry fun add_winners(
+        account: &signer,
+        hackathon_unique_id: u64,
+        winners: vector<u64>,
+        comments: vector<string::String>
+    ) acquires HackathonAggregator {
+        let hackathon_aggr = borrow_global_mut<HackathonAggregator>(@my_addr);
+        let hackathon = table::borrow_mut(&mut hackathon_aggr.hackathons, hackathon_unique_id);
+
+        // Check if the account is the owner of the hackathon
+        assert!(hackathon.owner == signer::address_of(account), ERR_NOT_OWNER);
+
+        hackathon.winners = winners;
+        hackathon.comments = comments;
+    }
+    //<:!:entry fun
+
+
 }
