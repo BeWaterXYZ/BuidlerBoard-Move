@@ -1,116 +1,116 @@
-# Builder Board
+# Move Buidlerboard
 
-[English](./README_EN.md) | 中文
+English | [中文](./README_CN.md)
 
-## 概述
+## Overview
 
-BuilderBoard 是一个基于 Aptos Framework 的开发者贡献追踪和激励平台。它通过智能合约记录开发者和项目的贡献数据，实现社区激励和成就认证。
+BuilderBoard is a developer contribution tracking and incentive platform based on the Aptos framework. It records developer and project contribution data through smart contracts to implement community incentives and achievement certification.
 
-## 目录
+## Table of Contents
 
-- [核心功能](#核心功能)
-  - [开发者评分系统](#开发者评分系统)
-  - [项目评分系统](#项目评分系统)
-  - [成就徽章系统](#成就徽章系统)
-  - [社区背书机制](#社区背书机制)
-- [技术架构](#技术架构)
-- [创新点](#创新点)
-- [应用场景](#应用场景)
-- [未来规划](#未来规划)
+- [Core Features](#core-features)
+  - [Developer Rating System](#developer-rating-system)
+  - [Project Rating System](#project-rating-system)
+  - [Achievement Badge System](#achievement-badge-system)
+  - [Community Endorsement](#community-endorsement)
+- [Technical Architecture](#technical-architecture)
+- [Innovations](#innovations)
+- [Use Cases](#use-cases)
+- [Future Plans](#future-plans)
 
-## 核心功能
+## Core Features
 
-### 开发者评分系统
+### Developer Rating System
 
-平台通过以下方式追踪和评估开发者贡献:
+The platform tracks and evaluates developer contributions through:
 
-- GitHub 活动数据追踪(stars、followers 等)
-- 综合贡献分数计算
-- 链上评分数据记录
+- GitHub activity data tracking (stars, followers, etc.)
+- Comprehensive contribution score calculation
+- On-chain rating data recording
 
-#### 评分维度及权重
+#### Rating Dimensions and Weights
 
-| 维度 | 权重 | 计算方式 | 说明 |
-|------|------|----------|------|
-| 社区影响力 | 15分 | [`Math.log10(followers + 1) * 15`](./src/utils/score-calculator.ts) | 基于followers数量 |
-| 项目受欢迎度 | 25分 | [`Math.log10(totalStars + 1) * 25`](./src/utils/score-calculator.ts) | 基于获得的stars总数 |
-| 贡献活跃度 | 20分 | [`Math.log10(contributions + 1) * 20`](./src/utils/score-calculator.ts) | 基于贡献次数 |
-| 代码贡献 | 15分 | [`Math.log10(pullRequests + 1) * 15`](./src/utils/score-calculator.ts) | 基于PR数量 |
-| 问题解决能力 | 10分 | [`Math.log10(issuesResolved + 1) * 10`](./src/utils/score-calculator.ts) | 基于已解决issues数量 |
-| 代码质量 | 10分 | [`codeQuality * 10`](./src/utils/score-calculator.ts) | 基于代码审查评分 |
-| 近期活跃度 | 5分 | [`recentActivity * 5`](./src/utils/score-calculator.ts) | 基于最近30天活动 |
+| Dimension | Weight | Calculation | Description |
+|-----------|--------|-------------|-------------|
+| Community Impact | 15pts | [`Math.log10(followers + 1) * 15`](./src/utils/score-calculator.ts) | Based on followers count |
+| Project Popularity | 25pts | [`Math.log10(totalStars + 1) * 25`](./src/utils/score-calculator.ts) | Based on total stars received |
+| Contribution Activity | 20pts | [`Math.log10(contributions + 1) * 20`](./src/utils/score-calculator.ts) | Based on contribution count |
+| Code Contribution | 15pts | [`Math.log10(pullRequests + 1) * 15`](./src/utils/score-calculator.ts) | Based on PR count |
+| Problem Solving | 10pts | [`Math.log10(issuesResolved + 1) * 10`](./src/utils/score-calculator.ts) | Based on resolved issues |
+| Code Quality | 10pts | [`codeQuality * 10`](./src/utils/score-calculator.ts) | Based on code review score |
+| Recent Activity | 5pts | [`recentActivity * 5`](./src/utils/score-calculator.ts) | Based on 30-day activity |
 
-### 项目评分系统
+### Project Rating System
 
-项目评分采用多维度评估方法:
+Project rating uses a multi-dimensional evaluation approach:
 
-| 维度 | 权重 | 计算方式 | 说明 |
-|------|------|----------|------|
-| 关注者影响力 | 15分 | [`Math.log10(followers + 1) * 15`](./src/utils/score-calculator.ts) | 项目关注度 |
-| Star影响力 | 35分 | [`Math.log10(totalStars + 1) * 35`](./src/utils/score-calculator.ts) | 最高权重指标 |
-| 分叉活跃度 | 20分 | [`Math.log10(forks + 1) * 20`](./src/utils/score-calculator.ts) | 项目复用价值 |
-| 贡献者规模 | 20分 | [`Math.log10(contributions + 1) * 20`](./src/utils/score-calculator.ts) | 社区活跃度 |
-| 近期活跃度 | 10分 | [`recentActivity * 10`](./src/utils/score-calculator.ts) | 时间衰减计算 |
+| Dimension | Weight | Calculation | Description |
+|-----------|--------|-------------|-------------|
+| Follower Impact | 15pts | [`Math.log10(followers + 1) * 15`](./src/utils/score-calculator.ts) | Project following |
+| Star Impact | 35pts | [`Math.log10(totalStars + 1) * 35`](./src/utils/score-calculator.ts) | Highest weight indicator |
+| Fork Activity | 20pts | [`Math.log10(forks + 1) * 20`](./src/utils/score-calculator.ts) | Project reuse value |
+| Contributor Scale | 20pts | [`Math.log10(contributions + 1) * 20`](./src/utils/score-calculator.ts) | Community activity |
+| Recent Activity | 10pts | [`recentActivity * 10`](./src/utils/score-calculator.ts) | Time decay calculation |
 
-### 成就徽章系统
+### Achievement Badge System
 
-- 8种不同类型的徽章
-- NFT形式[手动发放](./move/sources/github_score.move)
-- 基于开发者贡献度评定
+- 8 different types of badges
+- NFTs [manually issued](./move/sources/github_score.move)
+- Based on developer contribution assessment
 
-### 社区背书机制
+### Community Endorsement
 
-- [开发者互相背书](./move/sources/github_score.move)
-- 项目社区认可
+- [Developer mutual endorsement](./move/sources/github_score.move)
+- Project community recognition
 
-## 技术架构
+## Technical Architecture
 
-### 前端技术栈
+### Frontend Stack
 
 - Next.js 14
 - TypeScript
 - TailwindCSS
-- i18n 国际化
+- i18n internationalization
 
-### 后端技术栈
+### Backend Stack
 
 - Supabase (PostgreSQL)
 - GitHub API
-- Movement 区块链
-- Move 智能合约
+- Aptos Framework
+- Move Smart Contracts
 
-## 创新点
+## Innovations
 
-- 链上声誉系统
-  - 通过智能合约记录开发者贡献
-  - 社区互信机制
-  - 成就证明
-- 算法透明度验证
-  - 评分算法哈希上链存储
-  - 实时哈希验证接口
-  - 确保算法公平性和一致性
-- 多维度评估
-  - 代码贡献
-  - 社区影响力
-  - 项目价值
-- 激励机制
-  - NFT徽章激励
-  - 社区背书
-  - 声誉积累
+- On-chain Reputation System
+  - Developer contributions recorded via smart contracts
+  - Community trust mechanism
+  - Achievement proof
+- Algorithm Transparency Verification
+  - Scoring algorithm hash stored on-chain
+  - Real-time hash verification API
+  - Ensures algorithm fairness and consistency
+- Multi-dimensional Evaluation
+  - Code contributions
+  - Community impact
+  - Project value
+- Incentive Mechanism
+  - NFT badge incentives
+  - Community endorsement
+  - Reputation accumulation
 
-## 应用场景
+## Use Cases
 
-- 开发者招聘
-- 项目评估
-- 社区治理
-- 人才发现
+- Developer recruitment
+- Project evaluation
+- Community governance
+- Talent discovery
 
-## 未来规划
+## Future Plans
 
-- 更多生态集成
-  - MoveDID 集成
-  - NFT 徽章自动发放
-  - 更多链上身份认证
-- DAO治理机制
-- 更丰富的激励模式
-- 跨链互操作
+- More ecosystem integrations
+  - MoveDID integration
+  - Automatic NFT badge issuance
+  - More on-chain identity verification
+- DAO governance mechanism
+- Enhanced incentive models
+- Cross-chain interoperability 
