@@ -4,7 +4,7 @@ English | [中文](./README.md)
 
 ## Overview
 
-BuilderBoard is a developer contribution tracking and incentive platform based on the Movement blockchain. It records developer and project contribution data through smart contracts to implement community incentives and achievement certification.
+BuilderBoard is a developer contribution tracking and incentive platform based on the Aptos framework. It records developer and project contribution data through smart contracts to implement community incentives and achievement certification.
 
 ## Table of Contents
 
