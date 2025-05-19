@@ -2,66 +2,29 @@
 
 English | [中文](./README_CN.md)
 
+> Special thanks to `Fynn` for development contributions and `Olab` for translation work.
+
 ## Overview
 
-BuilderBoard is a developer contribution tracking and incentive platform based on the Aptos framework. It records developer and project contribution data through smart contracts to implement community incentives and achievement certification.
+Move BuilderBoard is a fully on-chain Hackathon system built on the Aptos Framework. Its vision is to foster a thriving Hackathon ecosystem through complete transparency of Hackathons and Projects.
 
-## Table of Contents
+* dApp: https://buidlerboard.rootmud.xyz/
+* 🎥 Introduction Video: https://youtu.be/1yXJgPMLiWw
+* 📚 Deck: https://drive.google.com/file/d/1GZDbdefXtveXMbsTflgztjnom7XqX_jM/view
+* 📜 Smart Contract: https://explorer.aptoslabs.com/account/0x9e0d5b6616485c40ce93f66e586a73cc433b63d36769554c36a57208b4aa440f/modules/code/buidlerboard/add_project?network=testnet
 
-- [Core Features](#core-features)
-  - [Developer Rating System](#developer-rating-system)
-  - [Project Rating System](#project-rating-system)
-  - [Achievement Badge System](#achievement-badge-system)
-  - [Community Endorsement](#community-endorsement)
-- [Technical Architecture](#technical-architecture)
-- [Innovations](#innovations)
-- [Use Cases](#use-cases)
-- [Future Plans](#future-plans)
+## Core Concept
+
+The proliferation of "Hackathon Hunters" and the lack of transparency in Hackathon judging have become core issues in current Hackathons, leading to a decline in the credibility of Hackathon events.
+
+Through a fully on-chain Buidlerboard, we aim to make projects and Hackathons completely transparent, addressing these core issues and building a decentralized, healthy Hackathon ecosystem.
 
 ## Core Features
 
-### Developer Rating System
-
-The platform tracks and evaluates developer contributions through:
-
-- GitHub activity data tracking (stars, followers, etc.)
-- Comprehensive contribution score calculation
-- On-chain rating data recording
-
-#### Rating Dimensions and Weights
-
-| Dimension | Weight | Calculation | Description |
-|-----------|--------|-------------|-------------|
-| Community Impact | 15pts | [`Math.log10(followers + 1) * 15`](./src/utils/score-calculator.ts) | Based on followers count |
-| Project Popularity | 25pts | [`Math.log10(totalStars + 1) * 25`](./src/utils/score-calculator.ts) | Based on total stars received |
-| Contribution Activity | 20pts | [`Math.log10(contributions + 1) * 20`](./src/utils/score-calculator.ts) | Based on contribution count |
-| Code Contribution | 15pts | [`Math.log10(pullRequests + 1) * 15`](./src/utils/score-calculator.ts) | Based on PR count |
-| Problem Solving | 10pts | [`Math.log10(issuesResolved + 1) * 10`](./src/utils/score-calculator.ts) | Based on resolved issues |
-| Code Quality | 10pts | [`codeQuality * 10`](./src/utils/score-calculator.ts) | Based on code review score |
-| Recent Activity | 5pts | [`recentActivity * 5`](./src/utils/score-calculator.ts) | Based on 30-day activity |
-
-### Project Rating System
-
-Project rating uses a multi-dimensional evaluation approach:
-
-| Dimension | Weight | Calculation | Description |
-|-----------|--------|-------------|-------------|
-| Follower Impact | 15pts | [`Math.log10(followers + 1) * 15`](./src/utils/score-calculator.ts) | Project following |
-| Star Impact | 35pts | [`Math.log10(totalStars + 1) * 35`](./src/utils/score-calculator.ts) | Highest weight indicator |
-| Fork Activity | 20pts | [`Math.log10(forks + 1) * 20`](./src/utils/score-calculator.ts) | Project reuse value |
-| Contributor Scale | 20pts | [`Math.log10(contributions + 1) * 20`](./src/utils/score-calculator.ts) | Community activity |
-| Recent Activity | 10pts | [`recentActivity * 10`](./src/utils/score-calculator.ts) | Time decay calculation |
-
-### Achievement Badge System
-
-- 8 different types of badges
-- NFTs [manually issued](./move/sources/github_score.move)
-- Based on developer contribution assessment
-
-### Community Endorsement
-
-- [Developer mutual endorsement](./move/sources/github_score.move)
-- Project community recognition
+* Hackathon Holders can initiate Hackathons on-chain and add judge accounts to the Hackathon
+* Builders can submit Projects to the Buidlerboard and then submit them to on-chain Hackathons
+* Hackathon Holders disclose Hackathon results and project evaluations
+* Ranking algorithm developers can submit sorting algorithms, and the dApp ranks projects using the loaded algorithms
 
 ## Technical Architecture
 
@@ -70,47 +33,16 @@ Project rating uses a multi-dimensional evaluation approach:
 - Next.js 14
 - TypeScript
 - TailwindCSS
-- i18n internationalization
 
 ### Backend Stack
 
-- Supabase (PostgreSQL)
 - GitHub API
 - Aptos Framework
-- Move Smart Contracts
-
-## Innovations
-
-- On-chain Reputation System
-  - Developer contributions recorded via smart contracts
-  - Community trust mechanism
-  - Achievement proof
-- Algorithm Transparency Verification
-  - Scoring algorithm hash stored on-chain
-  - Real-time hash verification API
-  - Ensures algorithm fairness and consistency
-- Multi-dimensional Evaluation
-  - Code contributions
-  - Community impact
-  - Project value
-- Incentive Mechanism
-  - NFT badge incentives
-  - Community endorsement
-  - Reputation accumulation
-
-## Use Cases
-
-- Developer recruitment
-- Project evaluation
-- Community governance
-- Talent discovery
+- Move Smart Contract
+- Supabase (PostgreSQL)
 
 ## Future Plans
 
-- More ecosystem integrations
-  - MoveDID integration
-  - Automatic NFT badge issuance
-  - More on-chain identity verification
-- DAO governance mechanism
-- Enhanced incentive models
-- Cross-chain interoperability 
+- Support for more ranking algorithms
+- Donation functionality
+- User experience optimization
