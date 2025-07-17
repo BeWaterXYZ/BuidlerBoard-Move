@@ -1,4 +1,4 @@
-module my_addr::rankor_only_star {
+module my_addr::rankor_by_donation_amount {
     use std::string;
     use std::vector;
 
@@ -15,7 +15,7 @@ module my_addr::rankor_only_star {
         vector::push_back(&mut recommend_models, string::utf8(b"DeepSeek"));
 
         RankingAlgorithm {
-            prompt: string::utf8(b"here arae the projects informations, plz rank the projects only based on the star number of the project."),
+            prompt: string::utf8(b"here arae the projects informations, plz rank the projects by the donation amount of each project."),
             recommend_models,
         }
     }
