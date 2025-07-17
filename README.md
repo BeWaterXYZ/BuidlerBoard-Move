@@ -1,5 +1,8 @@
 # Move Buidlerboard
 
+* [实现一个 On-Chain-Buidlerboard | Day 0x01](https://mp.weixin.qq.com/s/q0aBE4kOB5wLPBottwKC6Q)
+* [编写 3 页版本的 Hackathon Deck | Day 0x02](https://mp.weixin.qq.com/s/RSIenqRDlj2SS-cSv6qwCg)
+
 English | [中文](./README_CN.md)
 
 > Special thanks to `Fynn` for development contributions and `Olab` for translation work.
@@ -25,6 +28,8 @@ Through a fully on-chain Buidlerboard, we aim to make projects and Hackathons co
 * Builders can submit Projects to the Buidlerboard and then submit them to on-chain Hackathons
 * Hackathon Holders disclose Hackathon results and project evaluations
 * Ranking algorithm developers can submit sorting algorithms, and the dApp ranks projects using the loaded algorithms
+  * **Example 1:** Sorted by star count
+  * **Example 2:** Sorted by the project publisher’s address balance
 
 ## Technical Architecture
 

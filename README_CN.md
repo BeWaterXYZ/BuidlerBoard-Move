@@ -2,6 +2,9 @@
 
 [English](./README.md) | 中文
 
+* [实现一个 On-Chain-Buidlerboard | Day 0x01](https://mp.weixin.qq.com/s/q0aBE4kOB5wLPBottwKC6Q)
+* [编写 3 页版本的 Hackathon Deck | Day 0x02](https://mp.weixin.qq.com/s/RSIenqRDlj2SS-cSv6qwCg)
+
 > 感谢 `Fynn` 参与开发工作，感谢 `Olab` 参与翻译工作。
 
 ## 概述
@@ -25,6 +28,9 @@ Move BuilderBoard 是一个基于 Aptos Framework 的完全链上的 Hackathon �
 * Buidlers 提交 Projects 到 Buidlerboard，然后将 Projects 提交到链上 Hackathon
 * Hackathon Hodlers 披露 Hackathon 结果与项目评价
 * 排序算法开发者提交排序算法，dApp 通过加载的排序算法进行排序
+  * **例子 1：**按 Star 数排序
+  * **例子 2：**按项目发布者地址余额排序
+
 
 ## 技术架构
 
