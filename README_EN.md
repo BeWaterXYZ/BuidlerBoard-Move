@@ -7,7 +7,7 @@ English | [中文](./README.md)
 
 > Special thanks to `Fynn` for development contributions and `Olab` for translation work.
 
-## Overview
+## 0x01 Overview
 
 Move BuilderBoard is a fully on-chain Hackathon system built on the Aptos Framework. Its vision is to foster a thriving Hackathon ecosystem through complete transparency of Hackathons and Projects.
 
@@ -16,22 +16,24 @@ Move BuilderBoard is a fully on-chain Hackathon system built on the Aptos Framew
 * 📚 Deck: https://drive.google.com/file/d/1GZDbdefXtveXMbsTflgztjnom7XqX_jM/view
 * 📜 Smart Contract: https://explorer.aptoslabs.com/account/0x9e0d5b6616485c40ce93f66e586a73cc433b63d36769554c36a57208b4aa440f/modules/code/buidlerboard/add_project?network=testnet
 
-## Core Concept
+## 0x02 Project Highlights and Innovations
 
-The proliferation of "Hackathon Hunters" and the lack of transparency in Hackathon judging have become core issues in current Hackathons, leading to a decline in the credibility of Hackathon events.
+### Core Idea
 
-Through a fully on-chain Buidlerboard, we aim to make projects and Hackathons completely transparent, addressing these core issues and building a decentralized, healthy Hackathon ecosystem.
+The issues of "Hackathon Hunter Proliferation" and "Lack of Transparency in Hackathon Judging" have become the central problems of current hackathons. These problems have further led to a decline in the credibility of hackathon events.
 
-## Core Features
+By introducing a fully on-chain Buidlerboard, we bring transparency to projects and hackathons, solving core issues and building a decentralized, healthy hackathon ecosystem.
 
-* Hackathon Holders can initiate Hackathons on-chain and add judge accounts to the Hackathon
-* Builders can submit Projects to the Buidlerboard and then submit them to on-chain Hackathons
-* Hackathon Holders disclose Hackathon results and project evaluations
-* Ranking algorithm developers can submit sorting algorithms, and the dApp ranks projects using the loaded algorithms
-  * **Example 1:** Sorted by star count
-  * **Example 2:** Sorted by the project publisher’s address balance
+### Core Features
 
-## Technical Architecture
+* Hackathon Holders launch hackathons on-chain and add judge accounts to the hackathon.
+* Buidlers submit projects to Buidlerboard and then to the on-chain hackathon.
+* Hackathon Holders disclose hackathon results and project evaluations.
+* Sorting algorithm developers can submit sorting algorithms. The dApp ranks projects using the loaded algorithms.
+  * **Example 1:** Sort by number of stars
+  * **Example 2:** Sort by the balance of the project creator's address
+
+## 0x03 Technical Architecture
 
 ### Frontend Stack
 
@@ -46,8 +48,24 @@ Through a fully on-chain Buidlerboard, we aim to make projects and Hackathons co
 - Move Smart Contract
 - Supabase (PostgreSQL)
 
-## Future Plans
+## 0x04 Installation and Running Guide
 
-- Support for more ranking algorithms
-- Donation functionality
-- User experience optimization
+```
+$ git clone git@github.com:BeWaterXYZ/BuidlerBoard-Move.git
+$ cd dapp
+$ yarn
+$ cp .env.local.example .env.local
+$ yarn dev
+```
+
+Then visit: `https://localhost:3000`.
+
+## 0x05 Roadmap
+
+- Support for more sorting algorithms
+
+- Support donations in more tokens
+
+- Commenting on hackathons
+
+- Support for multi-chain wallet login
