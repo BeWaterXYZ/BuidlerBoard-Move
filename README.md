@@ -12,7 +12,7 @@
 Move BuilderBoard 是一个基于 Aptos Framework 的完全链上的 Hackathon 系统，其愿景是通过 Hackathons 和 Projects 的完全透明，让 Hackathon 生态繁荣。
 
 * dApp: https://buidlerboard.rootmud.xyz/
-* 🎥  介绍视频: https://youtu.be/1yXJgPMLiWw
+* 🎥  介绍视频: https://youtu.be/uVH8N-GubnI
 * 📚 Deck: [Deck](./Deck_250718.pdf)
 * 📜 智能合约: https://explorer.aptoslabs.com/account/0x9e0d5b6616485c40ce93f66e586a73cc433b63d36769554c36a57208b4aa440f/modules/code/buidlerboard/add_project?network=testnet
 
