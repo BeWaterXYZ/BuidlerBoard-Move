@@ -13,7 +13,7 @@ Move BuilderBoard 是一个基于 Aptos Framework 的完全链上的 Hackathon �
 
 * dApp: https://buidlerboard.rootmud.xyz/
 * 🎥  介绍视频: https://youtu.be/1yXJgPMLiWw
-* 📚 Deck: https://drive.google.com/file/d/1GZDbdefXtveXMbsTflgztjnom7XqX_jM/view
+* 📚 Deck: [Deck](./Deck_250718.pdf)
 * 📜 智能合约: https://explorer.aptoslabs.com/account/0x9e0d5b6616485c40ce93f66e586a73cc433b63d36769554c36a57208b4aa440f/modules/code/buidlerboard/add_project?network=testnet
 
 ## 0x02 项目亮点与创新点

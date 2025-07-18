@@ -13,7 +13,7 @@ Move BuilderBoard is a fully on-chain Hackathon system built on the Aptos Framew
 
 * dApp: https://buidlerboard.rootmud.xyz/
 * 🎥 Introduction Video: https://youtu.be/1yXJgPMLiWw
-* 📚 Deck: https://drive.google.com/file/d/1GZDbdefXtveXMbsTflgztjnom7XqX_jM/view
+* 📚 Deck:  [Deck](./Deck_250718.pdf)
 * 📜 Smart Contract: https://explorer.aptoslabs.com/account/0x9e0d5b6616485c40ce93f66e586a73cc433b63d36769554c36a57208b4aa440f/modules/code/buidlerboard/add_project?network=testnet
 
 ## 0x02 Project Highlights and Innovations
