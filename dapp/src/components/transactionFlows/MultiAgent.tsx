@@ -9,7 +9,7 @@ import {
 import { NetworkName, useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useState, useEffect } from "react";
 import { TransactionHash } from "../TransactionHash";
-import { Button } from "../ui/button";
+import { Button } from "../ui/button.tsx";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useToast } from "../ui/use-toast";
 import { LabelValueGrid } from "../LabelValueGrid";

@@ -1,7 +1,7 @@
 "use client";
 
 // import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { Button } from "../ui/button";
+import { Button } from "../ui/button.tsx";
 import {
   DropdownMenu,
   DropdownMenuContent,

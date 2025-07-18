@@ -1,4 +1,4 @@
-module my_addr::buidlerboard {
+module my_addr::buidlerboard_v2 {
     // use std::error;
     use std::signer;
     use std::string;
@@ -40,9 +40,28 @@ module my_addr::buidlerboard {
         intro_video_url: string::String,
     }
 
+
+
     struct AddProjectEventSet has key, store {
         add_project_events: EventHandle<AddProjectEvent>,
     }
+
+    struct AddCommentEventSet has key, store {
+        add_project_comment_events: EventHandle<AddProjectCommentEvent>,
+        add_hackathon_comment_events: EventHandle<AddHackathonCommentEvent>,
+    }
+
+    struct AddProjectCommentEvent has copy, drop, store {
+        project_unique_id: u64,
+        comment: string::String,
+        comment_owner: address,
+    }
+
+    struct AddHackathonCommentEvent has copy, drop, store {
+        comment: string::String,
+        comment_owner: address,
+    }
+
 
     // <:!: event resource
 
@@ -58,13 +77,14 @@ module my_addr::buidlerboard {
         judges: vector<address>,
         winners: vector<u64>,
         comments: vector<string::String>,
-        projects: vector<u64>,
+        projects: vector<u64>
     }
 
     struct HackathonAggregator has key {
         max_id: u64,
         hackathons: Table<u64, Hackathon>,
-        add_hackathon_events: event::EventHandle<AddHackathonEvent>,
+        add_comment_event_set: Table<u64, AddCommentEventSet>,
+        add_hackathon_events: event::EventHandle<AddHackathonEvent>
         // update_hackathon_events: event::EventHandle<UpdateHackathonEvent>
     }
 
@@ -102,7 +122,9 @@ module my_addr::buidlerboard {
         move_to(account, HackathonAggregator {
             max_id: 0,
             hackathons: table::new(),
+            add_comment_event_set: table::new(),
             add_hackathon_events: account::new_event_handle<AddHackathonEvent>(account),
+
         });
         move_to(account, ProjectAggregator {
             max_id: 0,
@@ -182,7 +204,7 @@ module my_addr::buidlerboard {
             judges: vector::empty(),
             winners: vector::empty(),
             comments: vector::empty(),
-            projects: vector::empty(),
+            projects: vector::empty()
         });
 
         // update the max id after add the hackathon.
@@ -303,6 +325,42 @@ module my_addr::buidlerboard {
         assert!(hackathon.owner == signer::address_of(account), ERR_NOT_OWNER);
 
         hackathon.judges = judges;
+    }
+
+    public entry fun add_comment_for_hackathon(
+        account: &signer,
+        hackathon_unique_id: u64,
+        comment: string::String
+    ) acquires HackathonAggregator {
+        let hackathon_aggr = borrow_global_mut<HackathonAggregator>(@my_addr);
+        let hackathon_comment_set = table::borrow_mut(&mut hackathon_aggr.add_comment_event_set, hackathon_unique_id);
+
+        event::emit_event<AddHackathonCommentEvent>(
+            &mut hackathon_comment_set.add_hackathon_comment_events,
+            AddHackathonCommentEvent {
+                comment: comment,
+                comment_owner: signer::address_of(account)
+            }
+        );
+    }
+
+    public entry fun add_comment_for_project(
+        account: &signer,
+        hackathon_unique_id: u64,
+        project_unique_id: u64,
+        comment: string::String
+    ) acquires HackathonAggregator {
+        let hackathon_aggr = borrow_global_mut<HackathonAggregator>(@my_addr);
+        let hackathon_comment_set = table::borrow_mut(&mut hackathon_aggr.add_comment_event_set, hackathon_unique_id);
+
+        event::emit_event<AddProjectCommentEvent>(
+            &mut hackathon_comment_set.add_project_comment_events,
+            AddProjectCommentEvent {
+                project_unique_id: project_unique_id,
+                comment: comment,
+                comment_owner: signer::address_of(account)
+            }
+        );
     }
 
     // Recommend use arweave to store the comment, and record the judge address in the comment.

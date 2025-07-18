@@ -50,6 +50,7 @@ import { NavBar } from "@/components/NavBar";
 import { AptosWallet, ReadonlyUint8Array, UserResponseStatus } from "@aptos-labs/wallet-standard";
 
 import { WalletButton } from "@/components/wallet/WalletButton";
+import { WalletSelector as ShadcnWalletSelector } from "@/components/WalletSelector";
 import { useAptosWallet } from "@razorlabs/wallet-kit";
 import { isValidElement } from "react";
 import { AddProjectForm } from "@/components/AddProjectForm";
@@ -153,14 +154,15 @@ interface Project {
   stars?: number;
 }
 
-// Update the Hackathon interface to include projects
+// Update the Hackathon interface to include projects and winners
 interface Hackathon {
   unique_id: number;
   name: string;
   description: string;
-  start_time: number;
-  end_time: number;
+  start_date: number;
+  end_date: number;
   projects: number[]; // Array of project unique_ids
+  winners: number[]; // Array of winning project unique_ids
 }
 
 // Add this function after the existing functions
@@ -197,17 +199,40 @@ async function doGetHackathons(aptos: Aptos) {
   }
 }
 
+// Add function to get individual project by unique_id
+async function doGetProject(aptos: Aptos, projectId: number) {
+  try {
+    const [project] = await aptos.view({
+      payload: {
+        function: `${DAPP_ADDRESS}::${DAPP_NAME}::get_project`,
+        typeArguments: [],
+        functionArguments: [projectId],
+      },
+    });
+    return project as Project;
+  } catch (error) {
+    console.error(`Error fetching project ${projectId}:`, error);
+    return null;
+  }
+}
+
 // Update the ProjectCard component
 function ProjectCard({ 
   project, 
   accountInfo,
+  hackathons,
   onUpdateClick,
-  onApplyClick
+  onApplyClick,
+  onDonateClick,
+  onHackathonClick
 }: { 
   project: Project; 
   accountInfo: AccountInfo | null;
+  hackathons: Hackathon[];
   onUpdateClick: (project: Project) => void;
   onApplyClick: (project: Project) => void;
+  onDonateClick: (project: Project) => void;
+  onHackathonClick: (hackathon: Hackathon) => void;
 }) {
   const { toast } = useToast();
   
@@ -220,8 +245,15 @@ function ProjectCard({
     });
   };
 
+  // Get hackathons where this project is a winner
+  const getWinningHackathons = () => {
+    return hackathons.filter(hackathon => 
+      hackathon.winners.includes(project.unique_id)
+    );
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,_0.1fr)_minmax(0,_0.45fr)_minmax(0,_0.22fr)_minmax(0,_0.45fr)_minmax(0,_0.2fr)_minmax(0,_1fr)] gap-2 md:gap-4 border-b border-b-[#334155] py-4 items-start md:items-center text-xs text-[#F8FAFC]">
+    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,_0.1fr)_minmax(0,_0.45fr)_minmax(0,_0.22fr)_minmax(0,_0.45fr)_minmax(0,_0.2fr)_minmax(0,_1fr)_minmax(0,_0.2fr)_minmax(0,_0.3fr)] gap-2 md:gap-4 border-b border-b-[#334155] py-4 items-start md:items-center text-xs text-[#F8FAFC]">
       {/* Rank */}
       <p className="text-base hidden md:block"># {project.rank}</p>
 
@@ -343,6 +375,46 @@ function ProjectCard({
         </div>
       </div>
 
+      {/* Donate */}
+      <div className="flex flex-col gap-2 mt-4 md:mt-0 items-center justify-center">
+        <button
+          onClick={() => onDonateClick(project)}
+          className="text-s text-white bg-purple-500 hover:bg-purple-700 cursor-pointer px-3 py-1 rounded"
+          title="Click to donate APT to the project owner"
+        >
+          <center>😘 Donate</center>
+        </button>
+      </div>
+
+      {/* Hackathon Joined */}
+      <div className="flex flex-col gap-2 mt-4 md:mt-0 items-center justify-center">
+        {(() => {
+          const winningHackathons = getWinningHackathons();
+          if (winningHackathons.length > 0) {
+            return (
+              <div className="flex flex-col gap-1">
+                {winningHackathons.map((hackathon) => (
+                  <button
+                    key={hackathon.unique_id}
+                    onClick={() => onHackathonClick(hackathon)}
+                    className="text-xs text-white bg-green-600 px-2 py-1 rounded hover:bg-green-700 cursor-pointer transition-colors"
+                    title={`Click to view ${hackathon.name} details`}
+                  >
+                    <center>🏆 {hackathon.name}</center>
+                  </button>
+                ))}
+              </div>
+            );
+          } else {
+            return (
+              <span className="text-s text-[#94A3B8]">
+                <center>No wins yet</center>
+              </span>
+            );
+          }
+        })()}
+      </div>
+
       
     </div>
   );
@@ -365,6 +437,13 @@ export default function Home() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [isApplyHackathonDialogOpen, setIsApplyHackathonDialogOpen] = useState(false);
   const [selectedProjectForHackathon, setSelectedProjectForHackathon] = useState<Project | null>(null);
+  const [isDonateDialogOpen, setIsDonateDialogOpen] = useState(false);
+  const [selectedProjectForDonation, setSelectedProjectForDonation] = useState<Project | null>(null);
+  const [donationAmount, setDonationAmount] = useState("");
+  const [isHackathonInfoDialogOpen, setIsHackathonInfoDialogOpen] = useState(false);
+  const [selectedHackathon, setSelectedHackathon] = useState<Hackathon | null>(null);
+  const [winningProjects, setWinningProjects] = useState<Project[]>([]);
+  const [isLoadingWinningProjects, setIsLoadingWinningProjects] = useState(false);
 
   const handleAddProject = () => {
     setIsDialogOpen(true);
@@ -438,27 +517,32 @@ export default function Home() {
   // Add this useEffect to fetch projects
   useEffect(() => {
     const fetchProjects = async () => {
-      if (aptos) {
-        setIsLoadingProjects(true);
-        try {
-          const fetchedProjects = await doGetProjects(aptos);
-          console.log("fetchedProjects", fetchedProjects);
-          setProjects(fetchedProjects);
-        } catch (error) {
-          console.error("Error fetching projects:", error);
-          toast({
-            title: "Error",
-            description: "Failed to fetch projects",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoadingProjects(false);
-        }
+      setIsLoadingProjects(true);
+      try {
+        // Create Aptos instance regardless of wallet connection
+        const aptosConfig = new AptosConfig({
+          network: Network.TESTNET,
+          fullnode: APTOS_NODE_URL,
+        });
+        const aptosClient = new Aptos(aptosConfig);
+        
+        const fetchedProjects = await doGetProjects(aptosClient);
+        console.log("fetchedProjects", fetchedProjects);
+        setProjects(fetchedProjects);
+      } catch (error) {
+        console.error("Error fetching projects:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch projects",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingProjects(false);
       }
     };
 
     fetchProjects();
-  }, [aptos]);
+  }, []); // Remove aptos dependency to run on component mount
 
   // Add this useEffect to handle filtering
   useEffect(() => {
@@ -671,6 +755,99 @@ export default function Home() {
     setIsApplyHackathonDialogOpen(true);
   };
 
+  const handleDonateClick = (project: Project) => {
+    setSelectedProjectForDonation(project);
+    setIsDonateDialogOpen(true);
+  };
+
+  const handleDonateSubmit = async () => {
+    if (!selectedProjectForDonation || !donationAmount || !connected) {
+      toast({
+        title: "Error",
+        description: "Please connect wallet and enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const amount = parseFloat(donationAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const transaction: InputGenerateTransactionPayloadData = {
+        function: "0x1::coin::transfer",
+        typeArguments: ["0x1::aptos_coin::AptosCoin"],
+        functionArguments: [
+          selectedProjectForDonation.owner,
+          amount * 100000000, // Convert to octas (8 decimal places)
+        ],
+      };
+
+      const userResponse = await signAndSubmitTransaction({
+        payload: transaction,
+      });
+
+      if (userResponse.status === "Approved") {
+        await aptos?.waitForTransaction({ transactionHash: userResponse.args.hash });
+        toast({
+          title: "Success",
+          description: `Successfully donated ${donationAmount} APT to ${selectedProjectForDonation.name}`,
+        });
+        setIsDonateDialogOpen(false);
+        setDonationAmount("");
+        setSelectedProjectForDonation(null);
+      }
+    } catch (error) {
+      console.error("Error donating:", error);
+      toast({
+        title: "Error",
+        description: "Failed to donate. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleHackathonClick = async (hackathon: Hackathon) => {
+    setSelectedHackathon(hackathon);
+    setIsHackathonInfoDialogOpen(true);
+    setIsLoadingWinningProjects(true);
+    
+    try {
+      // Create Aptos instance to fetch winning projects
+      const aptosConfig = new AptosConfig({
+        network: Network.TESTNET,
+        fullnode: APTOS_NODE_URL,
+      });
+      const aptosClient = new Aptos(aptosConfig);
+      
+      // Fetch winning project details for each winner
+      const winningProjectPromises = hackathon.winners.map(winnerId => 
+        doGetProject(aptosClient, winnerId)
+      );
+      
+      const winningProjectResults = await Promise.all(winningProjectPromises);
+      const validWinningProjects = winningProjectResults.filter(project => project !== null) as Project[];
+      
+      setWinningProjects(validWinningProjects);
+    } catch (error) {
+      console.error("Error fetching winning projects:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch winning project details",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingWinningProjects(false);
+    }
+  };
+
   useEffect(() => {
     const fetchHackathons = async () => {
       if (aptos && isApplyHackathonDialogOpen) {
@@ -692,6 +869,59 @@ export default function Home() {
     fetchHackathons();
   }, [aptos, isApplyHackathonDialogOpen]);
 
+  // Fetch hackathons when the page is loaded, regardless of wallet connection
+  useEffect(() => {
+    const fetchHackathonsOnLoad = async () => {
+      try {
+        // Create Aptos instance regardless of wallet connection
+        const aptosConfig = new AptosConfig({
+          network: Network.TESTNET,
+          fullnode: APTOS_NODE_URL,
+        });
+        const aptosClient = new Aptos(aptosConfig);
+        
+        const fetchedHackathons = await doGetHackathons(aptosClient);
+        console.log("fetchedHackathons on load", fetchedHackathons);
+        /*
+        [
+            {
+                "comments": [
+                    "n1c3 project!"
+                ],
+                "description": "A hackathon focused on building the next generation of Web3 applications",
+                "end_date": "1750311420",
+                "judges": [
+                    "0xe618fe07b01afad7f5cd17374e980ccfa42f24cb1375aa68a5249d15913fd096",
+                    "0x3fb7233a48d6f0a8c50e1d1861521790af0c5d7cfaf95ec81dc5bed4541becf1"
+                ],
+                "name": "Web3 Builders Hackathon",
+                "owner": "0x3fb7233a48d6f0a8c50e1d1861521790af0c5d7cfaf95ec81dc5bed4541becf1",
+                "projects": [
+                    "0"
+                ],
+                "start_date": "1747633020",
+                "unique_id": "0",
+                "winners": [
+                    "0"
+                ]
+            }
+        ]
+        */
+        // render the hackathon column by each item.winners of fetchedHackathons, the winners is a list of project unique_id.
+        setHackathons(fetchedHackathons);
+      } catch (error) {
+        console.error("Error fetching hackathons on load:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch hackathons",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchHackathonsOnLoad();
+  }, []); // Run on component mount
+  
   useEffect(() => {
     const fetchHackathonProjects = async () => {
       if (aptos && isApplyHackathonDialogOpen) {
@@ -712,6 +942,32 @@ export default function Home() {
     fetchHackathonProjects();
   }, [aptos, isApplyHackathonDialogOpen]);
 
+  // Fetch hackathon projects when the page is loaded, regardless of wallet connection
+  useEffect(() => {
+    const fetchHackathonProjectsOnLoad = async () => {
+      try {
+        // Create Aptos instance regardless of wallet connection
+        const aptosConfig = new AptosConfig({
+          network: Network.TESTNET,
+          fullnode: APTOS_NODE_URL,
+        });
+        const aptosClient = new Aptos(aptosConfig);
+        
+        const fetchedProjects = await doGetProjects(aptosClient);
+        setHackathonProjects(fetchedProjects);
+      } catch (error) {
+        console.error("Error fetching hackathon projects on load:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch hackathon projects",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchHackathonProjectsOnLoad();
+  }, []); // Run on component mount
+
   return (
     <main className="flex flex-col w-full max-w-[1333px] mx-auto p-6 pb-12 md:px-8 gap-6">
       <div className="flex justify-between items-center w-full">
@@ -722,7 +978,13 @@ export default function Home() {
       <div className="flex flex-col gap-4">
         <div className="text-4xl font-semibold tracking-tight">
           <center><h2>Move BuilderBoard</h2></center>
+          
         </div>
+        <p className={`text-xl text-center ${theme === 'light' ? 'text-black': 'text-white-200'} mb-12`}>
+          A fully-on-chain buidlerboard and a fully-on-chain hackathon system.
+        </p>
+        
+        {/* <ShadcnWalletSelector /> */}
         <div className="flex justify-center">
           <Image 
             // TODO: update the satofish to the better version.
@@ -796,13 +1058,15 @@ export default function Home() {
         ) : (
           <div className="flex flex-col">
             {/* Header */}
-            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,_0.1fr)_minmax(0,_0.45fr)_minmax(0,_0.22fr)_minmax(0,_0.45fr)_minmax(0,_0.2fr)_minmax(0,_1fr)] gap-2 md:gap-4 py-2 border-b border-b-[#334155] text-s text-[#94A3B8]">
+            <div className="grid grid-cols-1 md:grid-cols-[minmax(0,_0.1fr)_minmax(0,_0.45fr)_minmax(0,_0.22fr)_minmax(0,_0.45fr)_minmax(0,_0.2fr)_minmax(0,_1fr)_minmax(0,_0.2fr)_minmax(0,_0.3fr)] gap-2 md:gap-4 py-2 border-b border-b-[#334155] text-s text-[#94A3B8]">
               <div>Rank</div>
               <div>Project</div>
               <div><center>Category</center></div>
-              <div>Links</div>
+              <div>Important Links</div>
               <div><center>Video</center></div>
               <div>Owner</div>
+              <div><center>Donate</center></div>
+              <div><center>Hackathon</center></div>
             </div>
             {/* Projects List */}
             {filteredProjects.map((project) => (
@@ -810,8 +1074,11 @@ export default function Home() {
                 key={project.unique_id} 
                 project={project} 
                 accountInfo={accountInfo}
+                hackathons={hackathons}
                 onUpdateClick={handleUpdateButtonClick}
                 onApplyClick={handleApplyButtonClick}
+                onDonateClick={handleDonateClick}
+                onHackathonClick={handleHackathonClick}
               />
             ))}
           </div>
@@ -849,7 +1116,7 @@ export default function Home() {
                     <h3 className="font-medium">{hackathon.name}</h3>
                     <p className="text-sm text-gray-500">{hackathon.description}</p>
                     <p className="text-sm text-gray-500">
-                      {new Date(hackathon.start_time * 1000).toLocaleDateString()} - {new Date(hackathon.end_time * 1000).toLocaleDateString()}
+                      {new Date(hackathon.start_date * 1000).toLocaleDateString()} - {new Date(hackathon.end_date * 1000).toLocaleDateString()}
                     </p>
                   </div>
                   <button
@@ -873,6 +1140,156 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Donate Dialog */}
+      <Dialog open={isDonateDialogOpen} onOpenChange={setIsDonateDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Donate to Project</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {selectedProjectForDonation && (
+              <div className="space-y-4">
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-medium text-lg">{selectedProjectForDonation.name}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{selectedProjectForDonation.description}</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Owner: {`${selectedProjectForDonation.owner.slice(0, 6)}...${selectedProjectForDonation.owner.slice(-4)}`}
+                  </p>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="donation-amount" className="text-sm font-medium">
+                    Donation Amount (APT)
+                  </label>
+                  <input
+                    id="donation-amount"
+                    type="number"
+                    step="0.00000001"
+                    min="0"
+                    value={donationAmount}
+                    onChange={(e) => setDonationAmount(e.target.value)}
+                    placeholder="Enter amount in APT"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={handleDonateSubmit}
+                    disabled={!connected || !donationAmount || parseFloat(donationAmount) <= 0}
+                    className="flex-1 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {connected ? "Donate" : "Connect Wallet First"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsDonateDialogOpen(false);
+                      setDonationAmount("");
+                      setSelectedProjectForDonation(null);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hackathon Info Dialog */}
+      <Dialog open={isHackathonInfoDialogOpen} onOpenChange={setIsHackathonInfoDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>🏆 Hackathon Details</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {selectedHackathon && (
+              <div className="space-y-4">
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-medium text-xl mb-2">{selectedHackathon.name}</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                    {selectedHackathon.description}
+                  </p>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Start Date:</span>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {new Date(selectedHackathon.start_date * 1000).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="font-medium">End Date:</span>
+                      <p className="text-gray-600 dark:text-gray-300">
+                        {new Date(selectedHackathon.end_date * 1000).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <h4 className="font-medium mb-2">🏆 Winning Projects:</h4>
+                    <div className="grid gap-2">
+                      {isLoadingWinningProjects ? (
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-600 dark:text-gray-300">Loading winning projects...</p>
+                        </div>
+                      ) : winningProjects.length > 0 ? (
+                        winningProjects.map(project => (
+                          <div key={project.unique_id} className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <h5 className="font-medium text-green-800 dark:text-green-200">{project.name}</h5>
+                                <p className="text-sm text-green-600 dark:text-green-300">{project.description}</p>
+                              </div>
+                              <span className="text-2xl">🏆</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                          <p className="text-sm text-gray-600 dark:text-gray-300">No winning projects found</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="font-medium mb-2">📋 Participating Projects:</h4>
+                    <div className="grid gap-2">
+                      {hackathonProjects
+                        .filter(project => selectedHackathon.projects.includes(project.unique_id))
+                        .map(project => (
+                          <div key={project.unique_id} className="p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <h5 className="font-medium">{project.name}</h5>
+                            <p className="text-sm text-gray-600 dark:text-gray-300">{project.description}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={() => {
+                      setIsHackathonInfoDialogOpen(false);
+                      setSelectedHackathon(null);
+                      setWinningProjects([]);
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:text-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

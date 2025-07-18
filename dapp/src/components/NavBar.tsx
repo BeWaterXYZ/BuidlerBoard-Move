@@ -15,7 +15,7 @@ export function NavBar() {
           
           {/* <NavItem href="/example_ui" title="UI" /> | */}
           <NavItem href="/" title="Home" className="font-sans font-semibold text-base" /> |
-          <NavItem href="/hackathon-manager" title="Hackathon Manager" className="font-sans font-semibold text-base" /> | 
+          <NavItem href="/hackathons" title="Hackathons" className="font-sans font-semibold text-base" /> | 
           <li className="font-sans font-semibold text-base flex gap-2">
             <a href="https://youtu.be/1yXJgPMLiWw" target="_blank" rel="noreferrer">🎥 Video</a> |
             <a href="https://drive.google.com/file/d/1GZDbdefXtveXMbsTflgztjnom7XqX_jM/view?usp=sharing" target="_blank" rel="noreferrer">📚 Deck</a> |

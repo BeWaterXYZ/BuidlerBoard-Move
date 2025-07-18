@@ -45,6 +45,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 
 // Imports for registering a browser extension wallet plugin on page load
 // import { MyWallet } from "@/utils/standardWallet";
@@ -444,6 +445,11 @@ function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [isProjectDetailsOpen, setIsProjectDetailsOpen] = useState(false);
+  const [winningProjects, setWinningProjects] = useState<Project[]>([]);
+  const [isLoadingWinningProjects, setIsLoadingWinningProjects] = useState(false);
+  const [isAddWinnersOpen, setIsAddWinnersOpen] = useState(false);
+  const [selectedWinners, setSelectedWinners] = useState<number[]>([]);
+  const [winnerComments, setWinnerComments] = useState<string[]>([]);
   
   // Add useEffect to initialize aptos client
   useEffect(() => {
@@ -480,6 +486,34 @@ function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
 
     fetchProjects();
   }, [aptos]);
+
+  // Add useEffect to fetch winning project details
+  useEffect(() => {
+    const fetchWinningProjects = async () => {
+      if (aptos && hackathon.winners.length > 0) {
+        setIsLoadingWinningProjects(true);
+        try {
+          // Fetch winning project details for each winner
+          const winningProjectPromises = hackathon.winners.map(winnerId => 
+            doGetProject(aptos, parseInt(winnerId))
+          );
+          
+          const winningProjectResults = await Promise.all(winningProjectPromises);
+          const validWinningProjects = winningProjectResults.filter(project => project !== null) as Project[];
+          
+          setWinningProjects(validWinningProjects);
+        } catch (error) {
+          console.error("Error fetching winning projects:", error);
+        } finally {
+          setIsLoadingWinningProjects(false);
+        }
+      } else {
+        setWinningProjects([]);
+      }
+    };
+
+    fetchWinningProjects();
+  }, [aptos, hackathon.winners]);
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleDateString('en-US', {
@@ -525,20 +559,79 @@ function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
       });
 
       // Refresh the hackathon list
-      if (aptos && accountInfo) {
-        const currentAddress = getAddressString(accountInfo);
-        if (currentAddress) {
-          const fetchedHackathons = await doGetHackathons(aptos, `0x${currentAddress}`);
-          // Update the parent component's hackathons state
-          const event = new CustomEvent('hackathonsUpdated', { detail: fetchedHackathons });
-          window.dispatchEvent(event);
-        }
+      if (aptos) {
+        const fetchedHackathons = await doGetHackathons(aptos);
+        // Update the parent component's hackathons state
+        const event = new CustomEvent('hackathonsUpdated', { detail: fetchedHackathons });
+        window.dispatchEvent(event);
       }
     } catch (error) {
       console.error('Error adding judges:', error);
       toast({
         title: "Error",
         description: "Failed to add judges. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddWinners = async () => {
+    if (selectedWinners.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one winner",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const transaction: InputGenerateTransactionPayloadData = {
+        function: `${DAPP_ADDRESS}::${DAPP_NAME}::add_winners`,
+        typeArguments: [],
+        functionArguments: [
+          hackathon.unique_id,
+          selectedWinners,
+          winnerComments
+        ],
+      };
+
+      const userResponse = await signAndSubmitTransaction({
+        payload: transaction,
+      });
+
+      if (userResponse.status !== UserResponseStatus.APPROVED) {
+        throw new Error(userResponse.status);
+      }
+
+      // Wait for transaction to be confirmed
+      const hash = (userResponse as unknown as { args: { hash: string } }).args.hash;
+      if (aptos) {
+        await aptos.waitForTransaction({ transactionHash: hash });
+      }
+
+      toast({
+        title: "Success",
+        description: "Winners added successfully!",
+      });
+
+      // Close dialog and reset state
+      setIsAddWinnersOpen(false);
+      setSelectedWinners([]);
+      setWinnerComments([]);
+
+      // Refresh the hackathon list
+      if (aptos) {
+        const fetchedHackathons = await doGetHackathons(aptos);
+        // Update the parent component's hackathons state
+        const event = new CustomEvent('hackathonsUpdated', { detail: fetchedHackathons });
+        window.dispatchEvent(event);
+      }
+    } catch (error) {
+      console.error('Error adding winners:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add winners. Please try again.",
         variant: "destructive",
       });
     }
@@ -571,7 +664,14 @@ function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
           </div>
           <div className="pt-2">
             <p className="font-semibold text-s">Owner</p>
-            <CopyableAddress address={hackathon.owner} />
+            <div className="flex items-center gap-2">
+              <CopyableAddress address={hackathon.owner} />
+              {accountInfo && `0x${getAddressString(accountInfo)}` === hackathon.owner && (
+                <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">
+                  👤 You
+                </span>
+              )}
+            </div>
           </div>
           {/* Show judges, projects, winners and comments */}
           <div className="flex flex-col gap-2">
@@ -581,9 +681,20 @@ function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
               {hackathon.judges.length === 0 ? (
                 <p className="text-xs text-gray-500">Not yet</p>
               ) : (
-                hackathon.judges.map((judge) => (
-                  <CopyableAddress key={judge} address={judge} />
-                ))
+                hackathon.judges.map((judge) => {
+                  const isCurrentUser = accountInfo && 
+                    `0x${getAddressString(accountInfo)}` === judge;
+                  return (
+                    <div key={judge} className="flex items-center gap-2">
+                      <CopyableAddress address={judge} />
+                      {isCurrentUser && (
+                        <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">
+                          👤 You
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
@@ -620,34 +731,70 @@ function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
           </div>
         
           <div className="flex flex-col gap-2">
-            <p className="font-semibold text-s">Winners</p>
+            <p className="font-semibold text-s">🏆 Winners and Comments</p>
             <div className="space-y-1">
-                {/* Show not yet if winners is empty */}
               {hackathon.winners.length === 0 ? (
                 <p className="text-xs text-gray-500">Not yet</p>
+              ) : isLoadingWinningProjects ? (
+                <p className="text-xs text-gray-500">Loading winners...</p>
+              ) : winningProjects.length > 0 ? (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">
+                          Winner
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">
+                          Comment
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">
+                          Action
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                      {winningProjects.map((project, index) => (
+                        <tr key={project.unique_id} className="bg-white dark:bg-gray-900">
+                          <td className="px-3 py-2">
+                            <div>
+                              <p className="font-medium text-green-600 dark:text-green-400">
+                                🏆 {project.name}
+                              </p>
+                              <p className="text-gray-500 dark:text-gray-400">
+                                ID: {project.unique_id}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2">
+                            <p className="text-gray-700 dark:text-gray-300">
+                              {hackathon.comments[index] || 'No comment'}
+                            </p>
+                          </td>
+                          <td className="px-3 py-2">
+                            <button 
+                              className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                              onClick={() => {
+                                setSelectedProject(project);
+                                setIsProjectDetailsOpen(true);
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                hackathon.winners.map((winner) => (
-                  <CopyableAddress key={winner} address={winner} />
-                ))
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <p className="font-semibold text-s">Comments</p>
-            <div className="space-y-1">
-                {/* Show not yet if comments is empty */}   
-              {hackathon.comments.length === 0 ? (
-                <p className="text-xs text-gray-500">Not yet</p>
-              ) : (
-                hackathon.comments.map((comment) => (
-                  <p key={comment} className="text-xs">{comment}</p>
-                ))
+                <p className="text-xs text-gray-500">No winning projects found</p>
               )}
             </div>
           </div>
           <div className="flex flex-col gap-2">     
             <Button onClick={() => setIsAddJudgesOpen(true)}>Add Judges</Button>
-            <Button>Add Winners and Comments</Button>
+            <Button onClick={() => setIsAddWinnersOpen(true)}>Add Winners and Comments</Button>
           </div>
         </div>
       </CardContent>
@@ -661,7 +808,182 @@ function HackathonCard({ hackathon }: { hackathon: Hackathon }) {
         isOpen={isProjectDetailsOpen}
         onOpenChange={setIsProjectDetailsOpen}
       />
+      <AddWinnersDialog
+        isOpen={isAddWinnersOpen}
+        onOpenChange={setIsAddWinnersOpen}
+        onSubmit={handleAddWinners}
+        projects={projects}
+        selectedWinners={selectedWinners}
+        setSelectedWinners={setSelectedWinners}
+        winnerComments={winnerComments}
+        setWinnerComments={setWinnerComments}
+      />
     </Card>
+  );
+}
+
+// Add Winners Dialog Component
+function AddWinnersDialog({ 
+  isOpen, 
+  onOpenChange, 
+  onSubmit,
+  projects,
+  selectedWinners,
+  setSelectedWinners,
+  winnerComments,
+  setWinnerComments
+}: { 
+  isOpen: boolean; 
+  onOpenChange: (open: boolean) => void;
+  onSubmit: () => void;
+  projects: Project[];
+  selectedWinners: number[];
+  setSelectedWinners: (winners: number[]) => void;
+  winnerComments: string[];
+  setWinnerComments: (comments: string[]) => void;
+}) {
+  const handleWinnerToggle = (projectId: number) => {
+    if (selectedWinners.includes(projectId)) {
+      setSelectedWinners(selectedWinners.filter(id => id !== projectId));
+      // Remove corresponding comment
+      const index = selectedWinners.indexOf(projectId);
+      const newComments = [...winnerComments];
+      newComments.splice(index, 1);
+      setWinnerComments(newComments);
+    } else {
+      setSelectedWinners([...selectedWinners, projectId]);
+      setWinnerComments([...winnerComments, '']);
+    }
+  };
+
+  const handleCommentChange = (projectId: number, comment: string) => {
+    const index = selectedWinners.indexOf(projectId);
+    if (index !== -1) {
+      const newComments = [...winnerComments];
+      newComments[index] = comment;
+      setWinnerComments(newComments);
+    }
+  };
+
+  const handleSubmit = () => {
+    onSubmit();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>🏆 Add Winners and Comments</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-3">
+            <h4 className="font-medium">Select Winners:</h4>
+            <div className="grid gap-3 max-h-60 overflow-y-auto">
+              {projects.length > 0 ? (
+                projects.map((project) => (
+                  <div key={project.unique_id} className="flex items-start gap-3 p-3 border rounded-lg">
+                    <input
+                      type="checkbox"
+                      id={`winner-${project.unique_id}`}
+                      checked={selectedWinners.includes(project.unique_id)}
+                      onChange={() => handleWinnerToggle(project.unique_id)}
+                      className="mt-1"
+                    />
+                    <div className="flex-1">
+                      <label 
+                        htmlFor={`winner-${project.unique_id}`}
+                        className="font-medium cursor-pointer"
+                      >
+                        {project.name}
+                      </label>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                        {project.description}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-500">No projects available</p>
+              )}
+            </div>
+          </div>
+
+          {/* Winners and Comments Table */}
+          {selectedWinners.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="font-medium">🏆 Winners and Comments:</h4>
+              <div className="border rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Winner
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Comment
+                      </th>
+                      <th className="px-4 py-2 text-left text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Action
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                    {selectedWinners.map((winnerId, index) => {
+                      const project = projects.find(p => p.unique_id === winnerId);
+                      return (
+                        <tr key={winnerId} className="bg-white dark:bg-gray-900">
+                          <td className="px-4 py-3">
+                            <div>
+                              <p className="font-medium text-sm">{project?.name || `Project ${winnerId}`}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                ID: {winnerId}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <textarea
+                              value={winnerComments[index] || ''}
+                              onChange={(e) => handleCommentChange(winnerId, e.target.value)}
+                              placeholder="Add a comment for this winner..."
+                              className="w-full p-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                              rows={2}
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => handleWinnerToggle(winnerId)}
+                              className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                            >
+                              Remove
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <Button 
+              onClick={handleSubmit}
+              disabled={selectedWinners.length === 0}
+              className="flex-1"
+            >
+              Add Winners
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -689,7 +1011,7 @@ function getAddressString(account: AccountInfo | null): string | null {
 }
 
 // Add this function after the doGetBalance function
-async function doGetHackathons(aptos: Aptos, _accountAddress: string) {
+async function doGetHackathons(aptos: Aptos, _accountAddress?: string) {
     console.log("func", `${DAPP_ADDRESS}::${DAPP_NAME}::get_hackathons`);
   try {
     const [hackathons] = await aptos.view({
@@ -724,6 +1046,23 @@ async function doGetProjects(aptos: Aptos) {
   }
 }
 
+// Add function to get individual project by unique_id
+async function doGetProject(aptos: Aptos, projectId: number) {
+  try {
+    const [project] = await aptos.view({
+      payload: {
+        function: `${DAPP_ADDRESS}::${DAPP_NAME}::get_project`,
+        typeArguments: [],
+        functionArguments: [projectId],
+      },
+    });
+    return project as Project;
+  } catch (error) {
+    console.error(`Error fetching project ${projectId}:`, error);
+    return null;
+  }
+}
+
 export default function Home() {
   const { toast } = useToast();
   const { theme } = useTheme();
@@ -733,6 +1072,8 @@ export default function Home() {
   const [endTime, setEndTime] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
+  const [filteredHackathons, setFilteredHackathons] = useState<Hackathon[]>([]);
+  const [showMyHackathonsOnly, setShowMyHackathonsOnly] = useState(false);
 
   // Add event listener for hackathon updates
   useEffect(() => {
@@ -758,14 +1099,13 @@ export default function Home() {
   const [networkInfo, setNetworkInfo] = useState<NetworkInfo | null>(null);
 
   useEffect(() => {
-    if (connected) {
-      const aptosConfig = new AptosConfig({
-        network: Network.TESTNET,
-        fullnode: APTOS_NODE_URL,
-      });
-      setAptos(new Aptos(aptosConfig));
-    }
-  }, [connected]);
+    // Initialize aptos client regardless of wallet connection
+    const aptosConfig = new AptosConfig({
+      network: Network.TESTNET,
+      fullnode: APTOS_NODE_URL,
+    });
+    setAptos(new Aptos(aptosConfig));
+  }, []);
 
   useEffect(() => {
     const getNetwork = async () => {
@@ -790,18 +1130,44 @@ export default function Home() {
   // Add this useEffect to fetch hackathons when connected
   useEffect(() => {
     const fetchHackathons = async () => {
-      if (aptos && accountInfo) {
-        const currentAddress = getAddressString(accountInfo);
-        if (currentAddress) {
-          const fetchedHackathons = await doGetHackathons(aptos, `0x${currentAddress}`);
+      if (aptos) {
+        try {
+          const fetchedHackathons = await doGetHackathons(aptos, "");
           console.log("fetchedHackathons", fetchedHackathons);
           setHackathons(fetchedHackathons);
+        } catch (error) {
+          console.error("Error fetching hackathons:", error);
+          setHackathons([]);
         }
       }
     };
 
     fetchHackathons();
-  }, [aptos, accountInfo]);
+  }, [aptos]);
+
+  // Filter hackathons based on switch state
+  useEffect(() => {
+    if (hackathons.length > 0) {
+      if (showMyHackathonsOnly && accountInfo) {
+        const currentAddress = getAddressString(accountInfo);
+        if (currentAddress) {
+          const walletAddress = `0x${currentAddress}`;
+          const filtered = hackathons.filter(hackathon => 
+            hackathon.owner === walletAddress || 
+            hackathon.judges.includes(walletAddress)
+          );
+          setFilteredHackathons(filtered);
+        } else {
+          setFilteredHackathons([]);
+        }
+      } else {
+        // Show all hackathons
+        setFilteredHackathons(hackathons);
+      }
+    } else {
+      setFilteredHackathons([]);
+    }
+  }, [hackathons, accountInfo, showMyHackathonsOnly]);
 
   const handleSubmit = useCallback(async () => {
     if (!account?.address) return;
@@ -875,7 +1241,7 @@ export default function Home() {
       <div className="flex flex-col gap-4">
         <div className="text-4xl font-semibold tracking-tight text-center">
             {/* HINT: not modify the text */}
-          <h2>Hackathon Manag3r</h2>
+          <h2>Hackath0n Gallery</h2>
         </div>
         <div className="flex justify-center">
           <Image 
@@ -944,12 +1310,35 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Update the hackathon gallery to use fetched hackathons */}
-      <center><h2 className="text-4xl font-semibold">My Hackath0ns</h2></center>
+      {/* Update the hackathon gallery to use filtered hackathons */}
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-medium">Show All</span>
+          <Switch
+            checked={showMyHackathonsOnly}
+            onCheckedChange={setShowMyHackathonsOnly}
+          />
+          <span className="text-sm font-medium">My Hackathons Only</span>
+        </div>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
-        {hackathons.map((hackathon, index) => (
-          <HackathonCard key={index} hackathon={hackathon} />
-        ))}
+        {filteredHackathons.length > 0 ? (
+          filteredHackathons.map((hackathon, index) => (
+            <HackathonCard key={index} hackathon={hackathon} />
+          ))
+        ) : (
+          <div className="col-span-full text-center py-8">
+            <p className="text-lg text-gray-500 dark:text-gray-400">
+              {showMyHackathonsOnly ? 
+                (connected ? 
+                  "No hackathons found where you are the owner or judge." : 
+                  "Please connect your wallet to view your hackathons."
+                ) : 
+                "No hackathons found. Connect your wallet to create the first hackathon!"
+              }
+            </p>
+          </div>
+        )}
       </div>
     </main>
   );

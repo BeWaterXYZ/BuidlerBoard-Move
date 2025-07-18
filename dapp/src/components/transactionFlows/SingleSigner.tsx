@@ -12,7 +12,7 @@ import {
 } from "@aptos-labs/ts-sdk";
 
 import { NetworkName, useWallet } from "@aptos-labs/wallet-adapter-react";
-import { Button } from "../ui/button";
+import { Button } from "../ui/button.tsx";
 import { Card, CardHeader, CardTitle, CardContent } from "../ui/card";
 import { useToast } from "../ui/use-toast";
 import { TransactionHash } from "../TransactionHash";
